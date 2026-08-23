@@ -14,8 +14,8 @@ directly over node payload leases without an intermediate array.
 
 - Define endpoint references, payload lease ownership, normalized outcomes,
   and session identity. Runtime identity values, local endpoint allocation,
-  and allocation-free directional session binding are complete. The exact
-  version-one envelope, compound ownership, and bounded acceptance point are
+  allocation-free directional session binding, and exact version-one header
+  codec are complete. Compound ownership and the bounded acceptance point are
   accepted in decisions 0009 and 0010 but not yet implemented.
 - Implement a bounded in-process transport.
 - Route opaque payloads through bounded endpoint mailboxes and close/drain
@@ -32,9 +32,9 @@ directly over node payload leases without an intermediate array.
   backpressure, ownership restoration, forwarding, empty payloads,
   close/drain, and exact release. Session deadline, cancellation, disconnect,
   and acceptance-commit cases remain pending the session SPI.
-- Implement the 144-byte arbitrary-bound header codec, fixed-capacity compound
-  builder/header ownership, and high-level in-process session SPI before
-  qualifying IPC or network adapters.
+- The transactional 144-byte arbitrary-bound header codec is complete.
+  Implement fixed-capacity compound builder/header ownership and the high-level
+  in-process session SPI before qualifying IPC or network adapters.
 - Keep the first API one-way; add request/reply only after message correlation
   can reuse the same ownership rules.
 

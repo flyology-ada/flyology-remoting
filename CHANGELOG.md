@@ -31,3 +31,6 @@
   codec adapter while retaining the in-process facade.
 - Add reusable immediate local-node conformance for bounded claims, routing,
   ownership, close/drain, and generation-safe endpoint reuse.
+- Add public message identity values and the allocation-free version-one
+  144-byte header codec with canonical Wire schema encoding, arbitrary-bound
+  storage, transactional status failures, and corruption fixtures.

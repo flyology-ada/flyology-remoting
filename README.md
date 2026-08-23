@@ -22,8 +22,8 @@ not reused and the local role established by the session owner or handshake;
 the binding does not perform encoding. The accepted version-one envelope
 derives complete node references from this exact role-bound session and carries
 only the endpoints' slots and generations instead of those complete node
-references. The envelope and high-level session transport are not implemented
-yet.
+references. The fixed header value and codec are implemented; compound lease
+ownership and the high-level session transport are not implemented yet.
 
 ## Scope
 
@@ -111,11 +111,15 @@ The accepted first transport contract is bounded and session-scoped:
 
 Version one uses an exact 144-byte big-endian header associated with one
 established session whose node incarnations and identity must be authenticated
-by the session-establishment protocol. Header storage and precommit builders
-are fixed-capacity; the payload remains an opaque lease and can be forwarded
-under a newly validated header without copying or gaining writable access.
-These accepted contracts are the next implementation slice, not a claim that
-the current reference lane already provides a full session API.
+by the session-establishment protocol. The implemented allocation-free value
+codec reports transactional status failures, supports arbitrary array bounds,
+and encodes and decodes the writer schema identity through Wire's canonical
+bytes rather than Ada object representation. Header storage and precommit
+builders will be fixed-capacity; the payload remains an opaque lease and can be
+forwarded under a newly validated header without copying or gaining writable
+access. The compound builder and session contracts are the next implementation
+slice, not a claim that the current reference lane already provides a full
+session API.
 
 Durable delivery, transparent retry, global ordering, exactly-once execution,
 peer discovery, and code deployment are not initial promises.
