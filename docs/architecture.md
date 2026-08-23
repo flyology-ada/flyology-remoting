@@ -6,10 +6,12 @@ wire values remain subject to executable transport and codec tests.
 
 ## Model
 
-One process normally hosts one remoting node. A node incarnation identifies a
-particular running instance so references from an earlier process lifetime fail
-closed. An endpoint is a node-scoped, generation-stamped mailbox or control
-destination. Reusing endpoint storage must advance its generation.
+One process normally hosts one remoting node. A caller-supplied stable node ID
+identifies the logical node across restarts, while a caller-supplied incarnation
+identifies one running instance so references from an earlier process lifetime
+fail closed. An endpoint is a node-scoped, generation-stamped mailbox or
+control destination. Reusing endpoint storage advances a nonwrapping
+generation.
 
 A local Ada task may own one or more endpoints. A remote endpoint reference is
 a value; it cannot contain an Ada access value, native descriptor, mapped
@@ -27,8 +29,16 @@ metadata and one opaque encoded payload:
 - a sealed payload lease.
 
 The protocol will define an exact bounded envelope only together with its
-validation and compatibility tests. This document deliberately assigns no
-wire widths, byte order, magic values, maximum sizes, or default timeouts.
+validation and compatibility tests. Runtime node, incarnation, and session IDs
+have 128-bit semantic value spaces; endpoint slots and generations have 64-bit
+spaces with zero reserved as invalid. This does not assign their canonical
+byte encoding, envelope order, magic values, maximum sizes, or default
+timeouts.
+
+A live session value names its initiator node incarnation, acceptor node
+incarnation, and a nonreused session ID. Reconnect creates a new value. The
+identity constructors generate no entropy and perform no authentication;
+deployment and session establishment supply and authorize their values.
 
 ## Send ownership and acknowledgment
 
@@ -190,3 +200,8 @@ generation, type identity, and state transition is validated before use.
 Malformed or incompatible peer input fails the affected session closed. A
 transport must drain or release every kernel-owned or shared payload before
 reclaiming its storage.
+
+Wire codec descriptors are Ada values rather than stable memory ABIs. An
+envelope encodes each family, fingerprint, revision, and profile field using
+`flyology_wire`'s canonical representation and validates its zero sentinels; it
+never copies a descriptor object's memory representation into a frame.

@@ -41,6 +41,17 @@
   for control frames and wakes.
 - Treat writable shared-memory peers as mutually trusted until a separate
   hostile-peer design exists.
+- A node reference pairs a caller-supplied stable node ID with a caller-supplied
+  nonreused process incarnation. A session reference names its initiator and
+  acceptor incarnations plus a nonreused session ID. These values are routing
+  and freshness inputs, not authentication evidence, and remoting does not
+  generate their entropy.
+- Endpoint references contain a complete node reference, nonzero slot, and
+  nonzero nonwrapping generation. Reuse advances the generation; exhaustion
+  retires the slot rather than making an old reference current again.
+- Never serialize an Ada `Codec_Descriptor` object representation. Encode and
+  validate each `flyology_wire` identity in its canonical form when envelopes
+  are introduced.
 
 ## Repository workflow
 

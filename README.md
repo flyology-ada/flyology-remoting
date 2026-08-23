@@ -5,9 +5,11 @@ Flyology Remoting is an experimental, message-oriented remoting library for
 one endpoint and messaging model across an in-process transport, local
 interprocess communication, and network connections.
 
-The project is currently establishing its contracts. It provides a bounded
-in-process reference lane for opaque payload ownership and conformance work; it
-does not yet provide endpoint routing, IPC, network transport, or remote tasks.
+The project is currently establishing its contracts. It provides runtime node,
+session, and generation-stamped endpoint identities plus a bounded in-process
+reference lane for opaque payload ownership and conformance work. It does not
+yet provide endpoint mailboxes, routing, IPC, network transport, or remote
+tasks.
 
 ## Scope
 
@@ -100,7 +102,9 @@ alr build
 
 The tests verify that the companion crate compiles and exercise reference-lane
 ownership, backpressure, FIFO order, concurrent lightweight-task handoff,
-closure, and undelivered-payload cleanup.
+closure, and undelivered-payload cleanup. They also exercise invalid identity
+sentinels, restart and reconnect freshness, bounded endpoint allocation, stale
+reference rejection, slot reuse, and concurrent claims.
 
 ## License
 
