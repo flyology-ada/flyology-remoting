@@ -114,10 +114,11 @@ object layout, native addresses, access values, or runtime tags as a wire
 format.
 
 The current integration pins `flyology_wire` at a reviewed commit and accepts
-its static codec contract directly. A codec measures a value before remoting
-lends its writable payload block, encodes into that block without an
-intermediate copy, and decodes a received block under the validated writer
-schema identity while the payload lease remains owned by remoting.
+its static codec contract directly. A transport-independent payload-lease
+adapter measures a value before remoting lends writable storage, encodes into
+that storage without an intermediate copy, and decodes a received lease under
+the validated writer schema identity while remoting retains ownership. The
+in-process codec package is a thin facade over this common adapter.
 
 ## Build and test
 

@@ -66,10 +66,12 @@ compatible outbound lane for forwarding without gaining writable access.
 
 The first executable integration pins `flyology_wire` commit
 `97dc25218a33a6dabfba9b726239d5daab676128`. The generic
-`Flyology.Remoting.Codecs.In_Process` accepts the wire crate's formal-package
-codec contract directly. It measures before borrowing mutable storage, writes
-into the transport-owned block without an intermediate array, and invokes
-decode only inside the received payload's readable callback. A successful
-encode whose byte count differs from its exact measurement is a codec contract
-violation and raises `Program_Error`; reported codec failures retain their wire
-status and do not commit a new payload length.
+`Flyology.Remoting.Codecs.Payload_Leases` accepts opaque lease types,
+callback-scoped borrows, and the wire crate's formal-package codec contract.
+It measures before borrowing mutable storage, writes into the transport-owned
+block without an intermediate array, and invokes decode only inside the
+received payload's readable callback. `Codecs.In_Process` is a thin facade over
+that transport-independent adapter. A successful encode whose byte count
+differs from its exact measurement is a codec contract violation and raises
+`Program_Error`; reported codec failures retain their wire status and do not
+commit a new payload length.

@@ -19,7 +19,9 @@ directly over node payload leases without an intermediate array.
 - Route opaque payloads through bounded endpoint mailboxes and close/drain
   exact generations before slot reuse.
 - Apply statically bound wire codecs directly to writable and received payload
-  leases while passing the validated writer schema unchanged.
+  leases while passing the validated writer schema unchanged. The common
+  codec-over-lease adapter is transport-independent; the in-process package is
+  now a thin facade over it.
 - Build a reusable transport-conformance suite covering order, backpressure,
   deadlines, cancellation races, closure, and exact ownership release.
   The reusable payload-lane subset now covers FIFO order, bounded

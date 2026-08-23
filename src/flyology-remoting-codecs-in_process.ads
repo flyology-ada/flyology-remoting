@@ -2,11 +2,9 @@ with Flyology.Remoting.Transports.In_Process;
 with Flyology_Wire.Codecs;
 with Flyology_Wire.Codecs.Contracts;
 
---  Applies one statically bound flyology_wire codec directly to in-process
---  payload leases. Encoding writes into the owned pool slot, and decoding
---  observes received storage only for the dynamic extent of the codec call.
---  Instantiation raises Program_Error during elaboration when the wire codec
---  descriptor is invalid.
+--  Thin in-process facade over the transport-independent payload-lease codec
+--  adapter. Encoding writes into the owned pool slot, and decoding observes
+--  received storage only for the dynamic extent of the codec call.
 
 generic
    with package Transport is new Flyology.Remoting.Transports.In_Process (<>);
@@ -22,8 +20,8 @@ package Flyology.Remoting.Codecs.In_Process is
       Status  : out Flyology_Wire.Codecs.Encode_Status)
    with Pre => Transport.Has_Payload (Payload);
 
-   --  Decode the complete received payload using the already validated writer
-   --  identity from its remoting envelope.
+   --  Decode the complete received payload using the structurally validated
+   --  writer identity supplied by the enclosing message or envelope layer.
    procedure Decode
      (Writer  : Flyology_Wire.Codecs.Schema_Identity;
       Payload : Transport.Received_Payload;

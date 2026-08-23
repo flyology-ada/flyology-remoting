@@ -9,6 +9,7 @@ project Flyology_Remoting_Tests is
    for Main use
      ("compile_smoke.adb",
       "identity_directory_smoke.adb",
+      "codec_payload_lease_smoke.adb",
       "codec_transport_smoke.adb",
       "in_process_transport_smoke.adb",
       "in_process_node_smoke.adb",

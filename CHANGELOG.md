@@ -23,3 +23,5 @@
   Flyology's exact-generation lifecycle wait.
 - Add a reusable payload-lane conformance harness for immediate bounded
   ownership, FIFO, backpressure, forwarding, closure, and exact release.
+- Factor direct wire encoding and decode-under-lease into a transport-generic
+  codec adapter while retaining the in-process facade.
