@@ -19,8 +19,11 @@ direction before transport framing. This semantic binding allocates nothing
 and implies no authentication, authorization, reachability, or process
 liveness. Callers remain responsible for supplying a session identity that is
 not reused and the local role established by the session owner or handshake;
-the binding does not decide which identities an eventual envelope repeats or
-derives from its handshake.
+the binding does not perform encoding. The accepted version-one envelope
+derives complete node references from this exact role-bound session and carries
+only the endpoints' slots and generations instead of those complete node
+references. The envelope and high-level session transport are not implemented
+yet.
 
 ## Scope
 
@@ -86,9 +89,13 @@ generation before entering Flyology's atomic exact-generation wait. A focused
 integration fixture instantiates that seam directly against a real
 `Flyology.Supervision.Families` exact wait.
 
+Decision 0012 accepts authoritative death observation for an exact directly
+owned subprocess. Its one-shot monitor, session fencing, and failed-authority
+retirement are not implemented yet.
+
 ## Initial delivery contract
 
-The first transport contract will be bounded and session-scoped:
+The accepted first transport contract is bounded and session-scoped:
 
 - accepted messages are delivered at most once;
 - order is preserved from one sending endpoint to one receiving endpoint
@@ -98,8 +105,17 @@ The first transport contract will be bounded and session-scoped:
   that the receiver processed it;
 - overload, deadline expiry, incompatibility, disconnection, and authorization
   failure remain distinct outcomes; and
-- cancellation may stop pending local work but cannot retract a message that
-  has already been delivered.
+- cancellation may stop pending local work but cannot retract a message after
+  bounded send acceptance transfers payload ownership and atomically publishes
+  it with the already remoting-owned sealed header.
+
+Version one uses an exact 144-byte big-endian header associated with one
+established session whose node incarnations and identity must be authenticated
+by the session-establishment protocol. Header storage and precommit builders
+are fixed-capacity; the payload remains an opaque lease and can be forwarded
+under a newly validated header without copying or gaining writable access.
+These accepted contracts are the next implementation slice, not a claim that
+the current reference lane already provides a full session API.
 
 Durable delivery, transparent retry, global ordering, exactly-once execution,
 peer discovery, and code deployment are not initial promises.

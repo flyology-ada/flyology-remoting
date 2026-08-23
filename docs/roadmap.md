@@ -13,9 +13,10 @@ published `flyology_wire` static codec contract is pinned and exercised
 directly over node payload leases without an intermediate array.
 
 - Define endpoint references, payload lease ownership, normalized outcomes,
-  and session identity without fixing an envelope format. Runtime identity
-  values, local endpoint allocation, and allocation-free directional session
-  binding are complete.
+  and session identity. Runtime identity values, local endpoint allocation,
+  and allocation-free directional session binding are complete. The exact
+  version-one envelope, compound ownership, and bounded acceptance point are
+  accepted in decisions 0009 and 0010 but not yet implemented.
 - Implement a bounded in-process transport.
 - Route opaque payloads through bounded endpoint mailboxes and close/drain
   exact generations before slot reuse. A reusable immediate local-node harness
@@ -31,6 +32,9 @@ directly over node payload leases without an intermediate array.
   backpressure, ownership restoration, forwarding, empty payloads,
   close/drain, and exact release. Session deadline, cancellation, disconnect,
   and acceptance-commit cases remain pending the session SPI.
+- Implement the 144-byte arbitrary-bound header codec, fixed-capacity compound
+  builder/header ownership, and high-level in-process session SPI before
+  qualifying IPC or network adapters.
 - Keep the first API one-way; add request/reply only after message correlation
   can reuse the same ownership rules.
 
@@ -62,10 +66,16 @@ directly over node payload leases without an intermediate array.
   complete, including direct generic-instantiation coverage against a real
   `Flyology.Supervision.Families` exact wait.
 - Add a bounded registered task-kind catalogue.
+  Decision 0011 fixes its opaque identity/version, task-safe seal, and
+  disclosure semantics; the catalogue and reviewed Wire task-start schema
+  remain unimplemented.
 - Implement start acceptance, control endpoint publication, cancellation, and
   transport delivery of completion observations under local supervision.
 - Add authoritative node-incarnation death input without treating session
   disconnection as task death.
+  Decision 0012 accepts an exact directly owned subprocess as the first
+  authority; its one-shot monitor, session fencing, and bounded retirement
+  remain unimplemented.
 - Add request/reply facades and application receipts as messaging layers.
 
 ## Deferred

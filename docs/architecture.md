@@ -29,12 +29,20 @@ metadata and one opaque encoded payload:
 - optional deadline and tracing metadata; and
 - a sealed payload lease.
 
-The protocol will define an exact bounded envelope only together with its
-validation and compatibility tests. Runtime node, incarnation, and session IDs
-have 128-bit semantic value spaces; endpoint slots and generations have 64-bit
-spaces with zero reserved as invalid. This does not assign their canonical
-byte encoding, envelope order, magic values, maximum sizes, or default
-timeouts.
+Version one has an exact 144-byte big-endian header defined by decision 0009.
+It carries magic and version fields, checked header and payload lengths,
+reserved flags, message and optional correlation identities, source and
+destination endpoint slots and generations, and the canonical 56-byte
+`flyology_wire` writer schema identity. Complete node references and the
+session identity come from the exact role-bound session rather than repeating
+in each message. Header, payload, and complete-message limits remain explicit
+construction or session configuration; no default timeout is assigned.
+
+The logical encoded message is a compound sealed header lease plus an opaque
+payload lease. IPC publishes their relocatable extents. A network adapter sends
+the same logical byte sequence with a bounded two-segment state machine;
+provider gather I/O is optional. Re-enveloping may retain the immutable payload
+bytes while constructing and validating a new session-bound header.
 
 A live session value names its initiator node incarnation, acceptor node
 incarnation, and a nonreused session ID. Reconnect creates a new value. The
@@ -43,10 +51,13 @@ deployment and session establishment supply and authorize their values.
 
 ## Send ownership and acknowledgment
 
-Before submission, the caller owns a writable payload. Submission seals it.
-A rejected send leaves or restores caller ownership; an accepted send transfers
-ownership to remoting. Acceptance means that the selected transport owns the
-message, not that a peer received or processed it.
+Before submission, the caller owns a writable payload while remoting's bounded
+builder owns its fixed-capacity header token. Submission seals the header. A
+rejected send releases the header and leaves or restores payload ownership; an
+accepted send transfers payload ownership and atomically publishes it with the
+already remoting-owned sealed header at the sending session's first bounded
+outbound queue. Acceptance means that the selected transport owns both
+segments, not that a peer received or processed the message.
 
 Remote receipt, task start, and application processing are separate protocol
 milestones. A caller needing confirmation requests an explicit receipt or
@@ -164,6 +175,12 @@ and version and carries one encoded initialization message. The destination
 either rejects it explicitly or creates an ordinary supervised Ada task and
 returns a control endpoint.
 
+Decision 0011 fixes each task kind as an exact nonzero opaque 16-octet identity
+plus a nonzero 32-bit version. Registration and sealing share one task-safe
+bounded catalogue linearization, while authenticated prelookup policy controls
+unknown-versus-unsupported disclosure. The catalogue and its future reviewed
+Wire control-message schema are not implemented yet.
+
 The destination selects `Flyology.Native_Task` or
 `Flyology.Lightweight_Task` according to its local registration and policy.
 The caller does not transfer an Ada task identity, stack, closure, master,
@@ -181,6 +198,12 @@ Destination adapters convert `Flyology.Supervision.Wait_Termination` into
 bounded `Task_Ended` or `Task_Replaced` observations. An authoritative node
 incarnation monitor may report `Node_Incarnation_Ended`; a lost connection
 alone reports only `Peer_Unreachable` and does not prove that the task stopped.
+
+Decision 0012 permits that authoritative result only from an exact directly
+owned `Flyology.Subprocesses.Process` after capability proof and a session
+handshake that authenticates the same exact bound node incarnation. Its
+one-shot monitor, arm-versus-exit state, session fencing, resumable cleanup,
+and bounded retirement are accepted but not implemented.
 
 Exactly-once task start is not an initial guarantee. If retryable start is
 later required, the start protocol must define an idempotency identity,
