@@ -2,10 +2,12 @@ with Flyology;
 with Flyology.Remoting.Endpoints;
 with Flyology.Remoting.Endpoints.Directories;
 with Flyology.Remoting.Identities;
+with Flyology.Remoting.Sessions;
 
 procedure Identity_Directory_Smoke is
    package Endpoints renames Flyology.Remoting.Endpoints;
    package Identities renames Flyology.Remoting.Identities;
+   package Sessions renames Flyology.Remoting.Sessions;
 
    use type Endpoints.Endpoint_Generation;
    use type Endpoints.Endpoint_Reference;
@@ -15,6 +17,8 @@ procedure Identity_Directory_Smoke is
    use type Identities.Node_Reference;
    use type Identities.Session_ID;
    use type Identities.Session_Reference;
+   use type Sessions.Binding;
+   use type Sessions.Session_Role;
 
    procedure Assert (Condition : Boolean; Message : String) is
    begin
@@ -88,6 +92,169 @@ procedure Identity_Directory_Smoke is
             "endpoint with invalid generation was valid");
       end;
    end Run_Identity_Values;
+
+   procedure Run_Session_Bindings is
+      type Binding_Holder is record
+         Context : Sessions.Binding := Sessions.No_Binding;
+      end record;
+
+      Initiator_Node   : constant Identities.Node_Reference := Make_Node (41, 42, 43, 44);
+      Acceptor_Node    : constant Identities.Node_Reference := Make_Node (51, 52, 53, 54);
+      Foreign_Node     : constant Identities.Node_Reference := Make_Node (61, 62, 63, 64);
+      Restarted_Local  : constant Identities.Node_Reference := Make_Node (41, 42, 43, 45);
+      Session          : constant Identities.Session_Reference :=
+        Identities.Make_Session_Reference
+          (Initiator_Node, Acceptor_Node, Identities.Session_ID_From_Words (71, 72));
+      Reconnected      : constant Identities.Session_Reference :=
+        Identities.Make_Session_Reference
+          (Initiator_Node, Acceptor_Node, Identities.Session_ID_From_Words (71, 73));
+      Restarted        : constant Identities.Session_Reference :=
+        Identities.Make_Session_Reference
+          (Restarted_Local, Acceptor_Node, Identities.Session_ID_From_Words (71, 74));
+      Initiator_View   : constant Sessions.Binding :=
+        Sessions.Bind (Session, Sessions.Initiator_Role);
+      Acceptor_View    : constant Sessions.Binding :=
+        Sessions.Bind (Session, Sessions.Acceptor_Role);
+      Reconnected_View : constant Sessions.Binding :=
+        Sessions.Bind (Reconnected, Sessions.Initiator_Role);
+      Restarted_View   : constant Sessions.Binding :=
+        Sessions.Bind (Restarted, Sessions.Initiator_Role);
+      Default_Holder   : constant Binding_Holder := (others => <>);
+      Embedded_Holder  : constant Binding_Holder := (Context => Initiator_View);
+      Local_Endpoint   : constant Endpoints.Endpoint_Reference :=
+        Endpoints.Make_Endpoint_Reference
+          (Initiator_Node, Endpoints.Slot_From_Word (1), Endpoints.Generation_From_Word (2));
+      Peer_Endpoint    : constant Endpoints.Endpoint_Reference :=
+        Endpoints.Make_Endpoint_Reference
+          (Acceptor_Node, Endpoints.Slot_From_Word (3), Endpoints.Generation_From_Word (4));
+      Foreign_Endpoint : constant Endpoints.Endpoint_Reference :=
+        Endpoints.Make_Endpoint_Reference
+          (Foreign_Node, Endpoints.Slot_From_Word (5), Endpoints.Generation_From_Word (6));
+      Restarted_Endpoint : constant Endpoints.Endpoint_Reference :=
+        Endpoints.Make_Endpoint_Reference
+          (Restarted_Local, Endpoints.Slot_From_Word (7), Endpoints.Generation_From_Word (8));
+      Invalid_Slot : constant Endpoints.Endpoint_Reference :=
+        Endpoints.Make_Endpoint_Reference
+          (Initiator_Node, Endpoints.No_Endpoint_Slot, Endpoints.Generation_From_Word (9));
+      Invalid_Generation : constant Endpoints.Endpoint_Reference :=
+        Endpoints.Make_Endpoint_Reference
+          (Acceptor_Node, Endpoints.Slot_From_Word (10), Endpoints.No_Endpoint_Generation);
+      Invalid_Peer_Slot : constant Endpoints.Endpoint_Reference :=
+        Endpoints.Make_Endpoint_Reference
+          (Acceptor_Node, Endpoints.No_Endpoint_Slot, Endpoints.Generation_From_Word (11));
+      Invalid_Local_Generation : constant Endpoints.Endpoint_Reference :=
+        Endpoints.Make_Endpoint_Reference
+          (Initiator_Node, Endpoints.Slot_From_Word (12), Endpoints.No_Endpoint_Generation);
+      Invalid_Rejected : Boolean := False;
+      Bind_Returned    : Boolean := False;
+   begin
+      Assert
+        (Default_Holder.Context = Sessions.No_Binding
+         and then not Sessions.Is_Valid (Default_Holder.Context),
+         "default embedded binding was not vacant");
+      Assert
+        (Sessions.Is_Valid (Embedded_Holder.Context),
+         "valid binding could not be embedded by value");
+      Assert
+        (not Sessions.Is_Valid_Outbound_Route
+           (Sessions.No_Binding, Local_Endpoint, Peer_Endpoint),
+         "vacant binding accepted an outbound route");
+      Assert (Sessions.Reference (Initiator_View) = Session, "binding changed session reference");
+      Assert
+        (Sessions.Role (Initiator_View) = Sessions.Initiator_Role,
+         "binding changed local role");
+      Assert
+        (Sessions.Local_Node (Initiator_View) = Initiator_Node,
+         "initiator binding selected wrong local node");
+      Assert
+        (Sessions.Peer_Node (Initiator_View) = Acceptor_Node,
+         "initiator binding selected wrong peer node");
+      Assert
+        (Sessions.Local_Node (Acceptor_View) = Acceptor_Node,
+         "acceptor binding selected wrong local node");
+      Assert
+        (Sessions.Peer_Node (Acceptor_View) = Initiator_Node,
+         "acceptor binding selected wrong peer node");
+      Assert
+        (Sessions.Is_Valid_Outbound_Route (Initiator_View, Local_Endpoint, Peer_Endpoint),
+         "valid initiator outbound route was rejected");
+      Assert
+        (Sessions.Is_Valid_Inbound_Route (Initiator_View, Peer_Endpoint, Local_Endpoint),
+         "valid initiator inbound route was rejected");
+      Assert
+        (Sessions.Is_Valid_Outbound_Route (Acceptor_View, Peer_Endpoint, Local_Endpoint),
+         "valid acceptor outbound route was rejected");
+      Assert
+        (Sessions.Is_Valid_Inbound_Route (Acceptor_View, Local_Endpoint, Peer_Endpoint),
+         "valid acceptor inbound route was rejected");
+      Assert
+        (not Sessions.Is_Valid_Outbound_Route (Initiator_View, Peer_Endpoint, Local_Endpoint),
+         "swapped outbound route was accepted");
+      Assert
+        (not Sessions.Is_Valid_Inbound_Route (Initiator_View, Local_Endpoint, Peer_Endpoint),
+         "swapped inbound route was accepted");
+      Assert
+        (not Sessions.Is_Valid_Outbound_Route (Initiator_View, Foreign_Endpoint, Peer_Endpoint),
+         "foreign source route was accepted");
+      Assert
+        (not Sessions.Is_Valid_Outbound_Route (Initiator_View, Local_Endpoint, Foreign_Endpoint),
+         "foreign destination route was accepted");
+      Assert
+        (not Sessions.Is_Valid_Outbound_Route (Initiator_View, Invalid_Slot, Peer_Endpoint),
+         "invalid source slot was accepted");
+      Assert
+        (not Sessions.Is_Valid_Outbound_Route (Initiator_View, Local_Endpoint, Invalid_Generation),
+         "invalid destination generation was accepted");
+      Assert
+        (not Sessions.Is_Valid_Inbound_Route (Initiator_View, Invalid_Peer_Slot, Local_Endpoint),
+         "invalid inbound source slot was accepted");
+      Assert
+        (not Sessions.Is_Valid_Inbound_Route
+           (Initiator_View, Peer_Endpoint, Invalid_Local_Generation),
+         "invalid inbound destination generation was accepted");
+      Assert
+        (not Sessions.Is_Valid_Outbound_Route (Restarted_View, Local_Endpoint, Peer_Endpoint),
+         "old-incarnation source was accepted after restart");
+      Assert
+        (Sessions.Is_Valid_Outbound_Route (Restarted_View, Restarted_Endpoint, Peer_Endpoint),
+         "restarted-incarnation source was rejected");
+      Assert
+        (Sessions.Reference (Reconnected_View) /= Sessions.Reference (Initiator_View),
+         "reconnect reused a session binding reference");
+
+      begin
+         declare
+            Invalid : constant Sessions.Binding :=
+              Sessions.Bind (Identities.No_Session, Sessions.Initiator_Role);
+         begin
+            Bind_Returned := True;
+            Assert
+              (Sessions.Reference (Invalid) = Identities.No_Session,
+               "invalid session binding unexpectedly returned");
+         end;
+      exception
+         when Sessions.Invalid_Session =>
+            Assert (not Bind_Returned, "invalid session was accepted before a later failure");
+            Invalid_Rejected := True;
+      end;
+      Assert (Invalid_Rejected, "invalid session binding was accepted");
+
+      declare
+         Same_Node_Session : constant Identities.Session_Reference :=
+           Identities.Make_Session_Reference
+             (Initiator_Node, Initiator_Node, Identities.Session_ID_From_Words (81, 82));
+         Same_Node_View : constant Sessions.Binding :=
+           Sessions.Bind (Same_Node_Session, Sessions.Acceptor_Role);
+         Other_Local_Endpoint : constant Endpoints.Endpoint_Reference :=
+           Endpoints.Make_Endpoint_Reference
+             (Initiator_Node, Endpoints.Slot_From_Word (13), Endpoints.Generation_From_Word (14));
+      begin
+         Assert
+           (Sessions.Is_Valid_Outbound_Route
+              (Same_Node_View, Local_Endpoint, Other_Local_Endpoint),
+            "same-node session route was rejected");
+      end;
+   end Run_Session_Bindings;
 
    procedure Run_Sequential_Directory is
       package Local_Directory is new Endpoints.Directories (Capacity => 2);
@@ -293,6 +460,7 @@ procedure Identity_Directory_Smoke is
    end Run_Concurrent_Directory;
 begin
    Run_Identity_Values;
+   Run_Session_Bindings;
    Run_Sequential_Directory;
    Run_Concurrent_Directory;
 end Identity_Directory_Smoke;

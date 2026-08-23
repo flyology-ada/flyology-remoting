@@ -8,6 +8,8 @@
   backpressure, FIFO transfer, closure, and cleanup tests.
 - Add transport-neutral node, incarnation, session, and endpoint references
   with a bounded task-safe generation-stamped endpoint directory.
+- Add allocation-free live-session role binding and exact-incarnation
+  directional endpoint validation without assigning an envelope encoding.
 - Add a bounded endpoint-aware in-process node with generation-safe routing,
   close/drain reclamation, and concurrent-close ownership tests.
 - Add exact-generation remote task references, portable lifecycle outcomes,

@@ -13,6 +13,15 @@ encode directly into and decode directly from those payload leases. The
 project does not yet provide cross-node routing, IPC, network transport,
 registered task start, or remote lifecycle delivery.
 
+`Flyology.Remoting.Sessions` binds an existing live-session reference to the
+local initiator or acceptor role and validates exact-incarnation endpoint
+direction before transport framing. This semantic binding allocates nothing
+and implies no authentication, authorization, reachability, or process
+liveness. Callers remain responsible for supplying a session identity that is
+not reused and the local role established by the session owner or handshake;
+the binding does not decide which identities an eventual envelope repeats or
+derives from its handshake.
+
 ## Scope
 
 The remoting boundary consists of nodes, endpoints, opaque encoded messages,

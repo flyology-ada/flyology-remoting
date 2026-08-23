@@ -14,7 +14,8 @@ directly over node payload leases without an intermediate array.
 
 - Define endpoint references, payload lease ownership, normalized outcomes,
   and session identity without fixing an envelope format. Runtime identity
-  values and local endpoint allocation are complete.
+  values, local endpoint allocation, and allocation-free directional session
+  binding are complete.
 - Implement a bounded in-process transport.
 - Route opaque payloads through bounded endpoint mailboxes and close/drain
   exact generations before slot reuse. A reusable immediate local-node harness
