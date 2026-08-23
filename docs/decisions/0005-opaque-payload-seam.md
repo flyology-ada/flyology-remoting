@@ -30,6 +30,12 @@ exactly 56 bytes in that order, with revision and profile encoded unsigned
 big-endian. Remoting envelopes add endpoint, session, message, correlation,
 deadline, and tracing metadata.
 
+`Schema_Identity.Family` is the payload's message family/type identity.
+Remoting does not add a parallel message-type identity. `Incompatible` for an
+otherwise valid message remains a directional schema result at message scope.
+Protocol or handshake incompatibility and codec `Malformed`, `Noncanonical`,
+`Limit_Exceeded`, or `Invalid_Value` are session-fatal peer input.
+
 The agreed minimum wire runtime supplies:
 
 - Alire crate `flyology_wire` and Ada root `Flyology_Wire`, with no Flyology or

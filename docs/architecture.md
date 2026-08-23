@@ -22,7 +22,8 @@ The transport moves messages between endpoints. A message has semantic
 metadata and one opaque encoded payload:
 
 - source and destination endpoint references;
-- message type and schema identity supplied by the codec layer;
+- the writer schema identity supplied by the codec layer, whose family is the
+  message family/type identity;
 - a message identity scoped for diagnostics and deduplication mechanisms;
 - optional correlation metadata for request/reply;
 - optional deadline and tracing metadata; and
@@ -211,10 +212,13 @@ shared-memory protection, namespace discovery, executable deployment, or
 cross-node consensus.
 
 Every external envelope, frame, shared-memory descriptor, extent, length,
-generation, type identity, and state transition is validated before use.
-Malformed or incompatible peer input fails the affected session closed. A
-transport must drain or release every kernel-owned or shared payload before
-reclaiming its storage.
+generation, schema identity, and state transition is validated before use.
+Malformed protocol input, handshake incompatibility, invalid framing, and the
+payload statuses `Malformed`, `Noncanonical`, `Limit_Exceeded`, or
+`Invalid_Value` fail the affected session closed. `Incompatible` for an
+otherwise valid message is a directional schema result at message scope and
+does not by itself close the session. A transport must drain or release every
+kernel-owned or shared payload before reclaiming its storage.
 
 Wire codec descriptors are Ada values rather than stable memory ABIs. An
 envelope encodes each family, fingerprint, revision, and profile field using

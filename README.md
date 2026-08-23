@@ -98,11 +98,13 @@ mixing ordinary frames with that channel.
 
 ## Serialization boundary
 
-Remoting consumes opaque encoded bytes plus message type and schema identity.
-The sibling `flyology_wire` crate owns which Ada values can cross the boundary,
-codec generation, schema evolution, and whether a payload supports a validated
-borrowed view. Remoting does not use Ada object layout, native addresses,
-access values, or runtime tags as a wire format.
+Remoting consumes opaque encoded bytes plus the writer schema identity. Its
+`Family` component is the message family/type identity; remoting does not define
+a parallel message-type namespace. The sibling `flyology_wire` crate owns which
+Ada values can cross the boundary, codec generation, schema evolution, and
+whether a payload supports a validated borrowed view. Remoting does not use Ada
+object layout, native addresses, access values, or runtime tags as a wire
+format.
 
 The current integration pins `flyology_wire` at a reviewed commit and accepts
 its static codec contract directly. A codec measures a value before remoting
