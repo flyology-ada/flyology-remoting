@@ -19,3 +19,5 @@
   plus an independent Linux release build.
 - Clarify that wire schema incompatibility is a message-level outcome, while
   malformed protocol or handshake input is session-fatal.
+- Add a checked generic adapter from registry-retained supervisor handles to
+  Flyology's exact-generation lifecycle wait.

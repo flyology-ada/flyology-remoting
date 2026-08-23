@@ -46,6 +46,13 @@ for mapping that identity to the local handle.
 `Flyology.Task_Results` remains the underlying exact-task publication mechanism
 used by supervision.
 
+`Flyology.Remoting.Tasks.Local_Observers` binds that private handle through a
+static generic. It rejects an invalid reference or handle/reference generation
+mismatch before invoking the supplied exact-generation wait, then converts the
+copied observation without retaining the supervisor or handle. The formal wait
+must provide Flyology's atomic exact-handle check/registration semantics and
+must not follow a replacement.
+
 A node process restart changes the node incarnation. It ends every reference to
 the old incarnation but is not represented as a task replacement. Rebinding a
 logical service across process incarnations requires a separate discovery or
@@ -59,6 +66,7 @@ network reachability as task truth. Completion and replacement notifications
 will be ordinary bounded protocol messages; the wire crate will encode their
 schemas when it is pinned.
 
-The current slice defines values and local conversion only. It does not yet
-register task kinds, start tasks remotely, authenticate liveness authorities,
-or carry lifecycle observations over a session.
+The current slice defines values, local conversion, and the checked generic
+wait adapter. It does not yet register task kinds, start tasks remotely,
+authenticate liveness authorities, or carry lifecycle observations over a
+session.

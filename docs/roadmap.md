@@ -48,8 +48,9 @@ directly over node payload leases without an intermediate array.
 ## 4. Remote task lifecycle
 
 - Use exact node/logical-task/generation references and preserve Flyology
-  supervision's ended-versus-replaced observation semantics. The value model
-  and local supervision conversion are complete.
+  supervision's ended-versus-replaced observation semantics. The value model,
+  local supervision conversion, and checked exact-generation wait adapter are
+  complete.
 - Add a bounded registered task-kind catalogue.
 - Implement start acceptance, control endpoint publication, cancellation, and
   transport delivery of completion observations under local supervision.

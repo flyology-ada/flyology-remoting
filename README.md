@@ -61,6 +61,8 @@ incarnation. The local adapter converts Flyology supervision observations into
 bounded portable outcomes: ended, replaced, timed out, node incarnation ended,
 or peer unreachable. A disconnect is deliberately not called task death, and
 an exact-generation observation never follows a restarted task automatically.
+The generic local observer verifies the registry-retained supervisor handle's
+generation before entering Flyology's atomic exact-generation wait.
 
 ## Initial delivery contract
 

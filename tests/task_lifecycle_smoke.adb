@@ -4,6 +4,7 @@ with Flyology.Execution_Groups;
 with Flyology.Remoting.Identities;
 with Flyology.Remoting.Tasks;
 with Flyology.Remoting.Tasks.From_Supervision;
+with Flyology.Remoting.Tasks.Local_Observers;
 with Flyology.Supervision;
 
 procedure Task_Lifecycle_Smoke is
@@ -59,6 +60,122 @@ procedure Task_Lifecycle_Smoke is
        Live        => State = Supervision.Running,
        Escalated   => False));
 
+   procedure Run_Local_Observer is
+      type Local_Handle is record
+         Generation : Supervision.Generation;
+      end record;
+
+      type Local_Supervisor is record
+         Next_Status     : Supervision.Generation_Observation_Status := Supervision.Observation_Timed_Out;
+         Next_Generation : Supervision.Generation := Supervision.Generation'First;
+         Calls           : Natural := 0;
+      end record;
+
+      function Handle_Generation (Handle : Local_Handle) return Supervision.Generation is
+        (Handle.Generation);
+
+      function Wait_Termination
+        (Item    : in out Local_Supervisor;
+         Handle  : Local_Handle;
+         Timeout : Duration) return Supervision.Generation_Observation
+      is
+         pragma Unreferenced (Handle, Timeout);
+      begin
+         Item.Calls := Item.Calls + 1;
+         case Item.Next_Status is
+            when Supervision.Observation_Timed_Out =>
+               return (Status => Supervision.Observation_Timed_Out);
+            when Supervision.Generation_Terminated =>
+               return
+                 (Status   => Supervision.Generation_Terminated,
+                  Snapshot => Snapshot (Item.Next_Generation, Supervision.Terminated));
+            when Supervision.Generation_Replaced =>
+               return
+                 (Status   => Supervision.Generation_Replaced,
+                  Snapshot => Snapshot (Item.Next_Generation, Supervision.Running));
+         end case;
+      end Wait_Termination;
+
+      package Observer is new
+        Tasks.Local_Observers
+          (Local_Supervisor  => Local_Supervisor,
+           Local_Handle      => Local_Handle,
+           Handle_Generation => Handle_Generation,
+           Wait_Termination  => Wait_Termination);
+
+      Provider : Local_Supervisor;
+      Handle   : constant Local_Handle := (Generation => 9);
+   begin
+      declare
+         Result : constant Tasks.Task_Observation :=
+           Observer.Observe_Exact (Provider, Handle, Reference, Timeout => 0.0);
+      begin
+         Assert (Result.Status = Tasks.Observation_Timed_Out, "local observer changed timeout status");
+         Assert (Provider.Calls = 1, "local observer did not call the exact wait once");
+      end;
+
+      Provider.Next_Status := Supervision.Generation_Replaced;
+      Provider.Next_Generation := 10;
+      declare
+         Result : constant Tasks.Task_Observation :=
+           Observer.Observe_Exact (Provider, Handle, Reference, Timeout => 0.0);
+      begin
+         Assert (Result.Status = Tasks.Task_Replaced, "local observer lost replacement status");
+         Assert
+           (Tasks.Identity (Result.Replacement) = Tasks.Identity (Reference),
+            "local observer changed the node-global task identity");
+      end;
+
+      Provider.Next_Status := Supervision.Generation_Terminated;
+      Provider.Next_Generation := 9;
+      declare
+         Result : constant Tasks.Task_Observation :=
+           Observer.Observe_Exact (Provider, Handle, Reference, Timeout => 0.0);
+      begin
+         Assert (Result.Status = Tasks.Task_Ended, "local observer lost terminal status");
+         Assert
+           (Result.Completion.Kind = Tasks.Unhandled_Exception,
+            "local observer changed the terminal completion");
+      end;
+
+      Provider.Calls := 0;
+      declare
+         Rejected : Boolean := False;
+      begin
+         begin
+            declare
+               Ignored : constant Tasks.Task_Observation :=
+                 Observer.Observe_Exact
+                   (Provider, (Generation => 8), Reference, Timeout => 0.0);
+               pragma Unreferenced (Ignored);
+            begin
+               null;
+            end;
+         exception
+            when Program_Error =>
+               Rejected := True;
+         end;
+         Assert (Rejected, "local observer accepted a mismatched supervisor generation");
+         Assert (Provider.Calls = 0, "local observer waited before rejecting a mismatched handle");
+
+         Rejected := False;
+         begin
+            declare
+               Ignored : constant Tasks.Task_Observation :=
+                 Observer.Observe_Exact (Provider, Handle, Tasks.No_Task, Timeout => 0.0);
+               pragma Unreferenced (Ignored);
+            begin
+               null;
+            end;
+         exception
+            when Program_Error =>
+               Rejected := True;
+         end;
+         Assert (Rejected, "local observer accepted an invalid remoting reference");
+         Assert (Provider.Calls = 0, "local observer waited before rejecting an invalid reference");
+      end;
+   end Run_Local_Observer;
+
 begin
    Assert (Tasks.Is_Valid (Reference), "valid remote task reference was rejected");
    Assert (Tasks.Destination_Node (Reference) = Node, "remote task node identity changed");
@@ -73,6 +190,8 @@ begin
    Termination.Exception_Name (1 .. 12) := "TEST_FAILURE";
    Termination.Message_Length := 4;
    Termination.Message (1 .. 4) := "boom";
+
+   Run_Local_Observer;
 
    declare
       Local : constant Supervision.Generation_Observation :=
