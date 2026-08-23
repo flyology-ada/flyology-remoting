@@ -3,6 +3,7 @@ with Flyology;
 with Flyology.Buffers;
 with Flyology.Remoting.Transports;
 with Flyology.Remoting.Transports.In_Process;
+with Remoting_Payload_Lane_Conformance;
 with System;
 
 procedure In_Process_Transport_Smoke is
@@ -24,103 +25,69 @@ procedure In_Process_Transport_Smoke is
       end if;
    end Assert;
 
-   procedure Run_Ownership_And_Close is
-      package Reference is new Flyology.Remoting.Transports.In_Process (Queue_Capacity => 1);
+   procedure Run_Reusable_Conformance is
+      package Reference is new Flyology.Remoting.Transports.In_Process (Queue_Capacity => 2);
 
-      Storage        : aliased Buffers.Pool (Block_Size => 16, Capacity => 4);
-      Path           : Reference.Lane (Storage'Access);
-      First          : Reference.Writable_Payload (Storage'Access);
-      Second         : Reference.Writable_Payload (Storage'Access);
-      After_Close    : Reference.Writable_Payload (Storage'Access);
-      Target         : Reference.Received_Payload (Storage'Access);
-      Send_Result    : Transports.Try_Send_Result;
-      Receive_Result : Transports.Try_Receive_Result;
+      Storage : aliased Buffers.Pool (Block_Size => 16, Capacity => 6);
 
-      procedure Check (Data : Ada.Streams.Stream_Element_Array) is
+      subtype Lane is Reference.Lane (Storage'Access);
+      subtype Writable_Payload is Reference.Writable_Payload (Storage'Access);
+      subtype Received_Payload is Reference.Received_Payload (Storage'Access);
+
+      function Create_Lane return Lane is
       begin
-         Assert (Data = [1, 2, 3], "received payload changed");
-      end Check;
+         return Result : Lane do
+            null;
+         end return;
+      end Create_Lane;
+
+      function Create_Writable return Writable_Payload is
+      begin
+         return Result : Writable_Payload do
+            null;
+         end return;
+      end Create_Writable;
+
+      function Create_Received return Received_Payload is
+      begin
+         return Result : Received_Payload do
+            null;
+         end return;
+      end Create_Received;
+
+      function Resources_Balanced return Boolean is
+        (Buffers.Current (Storage) = (Available => 6, Outstanding => 0));
+
+      package Conformance is new
+        Remoting_Payload_Lane_Conformance
+          (Lane               => Lane,
+           Writable_Payload   => Writable_Payload,
+           Received_Payload   => Received_Payload,
+           Lane_Capacity      => 2,
+           Create_Lane        => Create_Lane,
+           Create_Writable    => Create_Writable,
+           Create_Received    => Create_Received,
+           Acquire            => Reference.Acquire,
+           Release_Writable   => Reference.Release,
+           Release_Received   => Reference.Release,
+           Has_Writable       => Reference.Has_Payload,
+           Has_Received       => Reference.Has_Payload,
+           Length_Writable    => Reference.Length,
+           Length_Received    => Reference.Length,
+           Copy_From          => Reference.Copy_From,
+           Read_Writable      => Reference.With_Readable_Data,
+           Read_Received      => Reference.With_Readable_Data,
+           Try_Send_Writable  => Reference.Try_Send,
+           Try_Send_Received  => Reference.Try_Send,
+           Try_Receive        => Reference.Try_Receive,
+           Close              => Reference.Close,
+           Current            => Reference.Current,
+           Resources_Balanced => Resources_Balanced);
    begin
-      Reference.Acquire (First);
-      Reference.Copy_From (First, [1, 2, 3]);
-      Reference.Try_Send (Path, First, Send_Result);
-      Assert
-        (Send_Result = Transports.Message_Accepted and then not Reference.Has_Payload (First),
-         "accepted send retained caller ownership");
+      Conformance.Run;
+   end Run_Reusable_Conformance;
 
-      Reference.Acquire (Second);
-      Reference.Copy_From (Second, [4, 5]);
-      Reference.Try_Send (Path, Second, Send_Result);
-      Assert
-        (Send_Result = Transports.Backpressure and then Reference.Has_Payload (Second),
-         "backpressure did not preserve caller ownership");
-
-      Reference.Try_Receive (Path, Target, Receive_Result);
-      Assert
-        (Receive_Result = Transports.Message_Received and then Reference.Has_Payload (Target),
-         "receive did not transfer ownership");
-      Reference.With_Readable_Data (Target, Check'Access);
-      Reference.Release (Target);
-
-      Reference.Try_Send (Path, Second, Send_Result);
-      Assert (Send_Result = Transports.Message_Accepted, "send after drain was not accepted");
-      Reference.Close (Path);
-      Assert (Reference.Current (Path) = (Closed => True, Pending => 1), "closed snapshot is wrong");
-
-      Reference.Acquire (After_Close);
-      Reference.Copy_From (After_Close, [9]);
-      Reference.Try_Send (Path, After_Close, Send_Result);
-      Assert
-        (Send_Result = Transports.Send_Closed and then Reference.Has_Payload (After_Close),
-         "closed send consumed caller ownership");
-
-      Reference.Try_Receive (Path, Target, Receive_Result);
-      Assert (Receive_Result = Transports.Message_Received, "close discarded an accepted payload");
-      Reference.Release (Target);
-      Reference.Try_Receive (Path, Target, Receive_Result);
-      Assert (Receive_Result = Transports.Receive_Closed, "drained lane did not report closure");
-      Reference.Release (After_Close);
-      Assert
-        (Buffers.Current (Storage) = (Available => 4, Outstanding => 0),
-         "ownership accounting did not return to zero");
-   end Run_Ownership_And_Close;
-
-   procedure Run_FIFO is
-      package Reference is new Flyology.Remoting.Transports.In_Process (Queue_Capacity => 4);
-
-      Storage        : aliased Buffers.Pool (Block_Size => 4, Capacity => 5);
-      Path           : Reference.Lane (Storage'Access);
-      Outbound       : Reference.Writable_Payload (Storage'Access);
-      Inbound        : Reference.Received_Payload (Storage'Access);
-      Send_Result    : Transports.Try_Send_Result;
-      Receive_Result : Transports.Try_Receive_Result;
-   begin
-      for Value in 1 .. 4 loop
-         Reference.Acquire (Outbound);
-         Reference.Copy_From (Outbound, [1 => Ada.Streams.Stream_Element (Value)]);
-         Reference.Try_Send (Path, Outbound, Send_Result);
-         Assert (Send_Result = Transports.Message_Accepted, "FIFO setup send failed");
-      end loop;
-
-      for Expected in 1 .. 4 loop
-         declare
-            Matches : Boolean := False;
-
-            procedure Check (Data : Ada.Streams.Stream_Element_Array) is
-            begin
-               Matches := Data'Length = 1 and then Natural (Data (Data'First)) = Expected;
-            end Check;
-         begin
-            Reference.Try_Receive (Path, Inbound, Receive_Result);
-            Assert (Receive_Result = Transports.Message_Received, "FIFO receive failed");
-            Reference.With_Readable_Data (Inbound, Check'Access);
-            Assert (Matches, "accepted payloads were reordered");
-            Reference.Release (Inbound);
-         end;
-      end loop;
-   end Run_FIFO;
-
-   procedure Run_Forwarding_And_Empty_Payload is
+   procedure Run_Zero_Copy_Forwarding is
       package Reference is new Flyology.Remoting.Transports.In_Process (Queue_Capacity => 1);
 
       Storage        : aliased Buffers.Pool (Block_Size => 8, Capacity => 2);
@@ -145,16 +112,6 @@ procedure In_Process_Transport_Smoke is
       end Remember_After;
    begin
       Reference.Acquire (Outbound);
-      Assert (Reference.Length (Outbound) = 0, "new payload was not empty");
-      Reference.Try_Send (First_Path, Outbound, Send_Result);
-      Assert (Send_Result = Transports.Message_Accepted, "empty payload send failed");
-      Reference.Try_Receive (First_Path, Relay, Receive_Result);
-      Assert
-        (Receive_Result = Transports.Message_Received and then Reference.Length (Relay) = 0,
-         "empty payload did not survive transfer");
-      Reference.Release (Relay);
-
-      Reference.Acquire (Outbound);
       Reference.Copy_From (Outbound, [17, 18, 19]);
       Reference.With_Readable_Data (Outbound, Remember_Before'Access);
       Reference.Try_Send (First_Path, Outbound, Send_Result);
@@ -170,7 +127,7 @@ procedure In_Process_Transport_Smoke is
       Reference.With_Readable_Data (Target, Remember_After'Access);
       Assert (Before = After, "forwarding copied or replaced payload storage");
       Reference.Release (Target);
-   end Run_Forwarding_And_Empty_Payload;
+   end Run_Zero_Copy_Forwarding;
 
    procedure Run_Concurrent is
       package Reference is new Flyology.Remoting.Transports.In_Process (Queue_Capacity => 8);
@@ -315,9 +272,8 @@ procedure In_Process_Transport_Smoke is
          "lane finalization did not release an undelivered payload");
    end Run_Finalization_Cleanup;
 begin
-   Run_Ownership_And_Close;
-   Run_FIFO;
-   Run_Forwarding_And_Empty_Payload;
+   Run_Reusable_Conformance;
+   Run_Zero_Copy_Forwarding;
    Run_Concurrent;
    Run_Finalization_Cleanup;
 end In_Process_Transport_Smoke;

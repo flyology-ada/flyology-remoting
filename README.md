@@ -44,6 +44,11 @@ Closing a lane rejects new sends and drains already accepted payloads.
 Received payloads can be forwarded to another compatible lane without copying
 or acquiring mutable access.
 
+A reusable test-only payload-lane contract qualifies immediate ownership,
+FIFO, backpressure, forwarding, empty-payload, close/drain, and exact-release
+semantics. It is intentionally not called full session conformance yet because
+the current lane has no handshake, deadline, cancellation, or disconnect API.
+
 This is the executable semantic reference for later IPC and network adapters,
 not a separate application messaging API. It deliberately carries opaque bytes
 and defines no type IDs, schema values, framing, endpoints, or codec contract.

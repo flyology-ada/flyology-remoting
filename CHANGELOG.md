@@ -21,3 +21,5 @@
   malformed protocol or handshake input is session-fatal.
 - Add a checked generic adapter from registry-retained supervisor handles to
   Flyology's exact-generation lifecycle wait.
+- Add a reusable payload-lane conformance harness for immediate bounded
+  ownership, FIFO, backpressure, forwarding, closure, and exact release.

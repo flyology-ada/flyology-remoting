@@ -22,6 +22,10 @@ directly over node payload leases without an intermediate array.
   leases while passing the validated writer schema unchanged.
 - Build a reusable transport-conformance suite covering order, backpressure,
   deadlines, cancellation races, closure, and exact ownership release.
+  The reusable payload-lane subset now covers FIFO order, bounded
+  backpressure, ownership restoration, forwarding, empty payloads,
+  close/drain, and exact release. Session deadline, cancellation, disconnect,
+  and acceptance-commit cases remain pending the session SPI.
 - Keep the first API one-way; add request/reply only after message correlation
   can reuse the same ownership rules.
 
