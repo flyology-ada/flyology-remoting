@@ -122,6 +122,43 @@ exercise invalid identity sentinels, restart and reconnect freshness, bounded
 endpoint allocation, stale reference rejection, slot reuse, concurrent claims,
 and portable exact-generation lifecycle conversion.
 
+## Agent setup
+
+This repository uses APM 0.28.0 to provision one locked graph of shared and
+repository-specific instructions and skills for Codex and Claude. In a new
+clone or worktree, run:
+
+```sh
+curl -sSL https://aka.ms/apm-unix | sh -s -- @v0.28.0
+apm --version
+
+apm install --frozen
+apm compile --target codex
+```
+
+The compiled `AGENTS.md` is committed so Codex receives the instructions
+without setup. APM generates Claude's native rules and the Codex and Claude
+skill trees locally from the same `apm.lock.yaml` graph; those deployment
+outputs are ignored. Start a fresh client session after installation so it
+discovers the generated skills. Repository-specific instructions live under
+`agent-packages/`, and shared Ada and workflow resources come from the
+`flyology-ada/agents` `main` update channel at the exact revision recorded in
+`apm.lock.yaml`.
+
+To review an intentional shared-resource upgrade, run:
+
+```sh
+apm outdated
+apm update flyology-ada/agents
+apm compile --target codex
+apm audit --ci
+git diff --check
+```
+
+Review the resulting lockfile, generated `AGENTS.md`, and behavior before
+committing them. Frozen installation and CI never update the selected shared
+revision.
+
 ## License
 
 Flyology Remoting is available under either the MIT License or the Apache
