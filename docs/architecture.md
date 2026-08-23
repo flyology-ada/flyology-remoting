@@ -172,7 +172,10 @@ Cancellation is a request delivered to the destination supervisor. It should
 normally drive a Flyology cancellation token and structured cleanup; it is not
 a claim that distributed abort is instantaneous. Waiting observes one exact
 generation and never follows a replacement. A portable task reference contains
-the exact node incarnation, logical task ID, and nonwrapping generation.
+the exact node incarnation, logical task ID, and nonwrapping generation. The
+node registry allocates logical task IDs from one nonwrapping space for the
+whole node incarnation and maps them to exact local supervisor handles;
+supervisor-local child IDs never cross that boundary.
 Destination adapters convert `Flyology.Supervision.Wait_Termination` into
 bounded `Task_Ended` or `Task_Replaced` observations. An authoritative node
 incarnation monitor may report `Node_Incarnation_Ended`; a lost connection

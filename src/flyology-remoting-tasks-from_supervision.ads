@@ -1,4 +1,3 @@
-with Flyology.Remoting.Identities;
 with Flyology.Supervision;
 
 --  Converts Flyology's exact local supervision observations into portable
@@ -7,14 +6,14 @@ with Flyology.Supervision;
 
 package Flyology.Remoting.Tasks.From_Supervision is
 
-   function To_Task_Reference
-     (Node : Identities.Node_Reference; Handle : Flyology.Supervision.Child_Handle) return Task_Reference;
-
    function To_Completion
      (Item : Flyology.Supervision.Termination_Summary) return Completion_Summary;
 
+   --  Preserve the node-global task identity being observed. A Flyology
+   --  Child_Id belongs to one supervisor controller and is not a node-global
+   --  remoting identity. Incoherent observations raise Program_Error.
    function To_Observation
-     (Node : Identities.Node_Reference; Item : Flyology.Supervision.Generation_Observation)
+     (Observed : Task_Reference; Item : Flyology.Supervision.Generation_Observation)
       return Task_Observation;
 
 end Flyology.Remoting.Tasks.From_Supervision;

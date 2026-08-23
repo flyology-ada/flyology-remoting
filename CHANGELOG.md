@@ -11,7 +11,8 @@
 - Add a bounded endpoint-aware in-process node with generation-safe routing,
   close/drain reclamation, and concurrent-close ownership tests.
 - Add exact-generation remote task references, portable lifecycle outcomes,
-  and conversion from Flyology supervision observations.
+  and conversion from Flyology supervision observations while preserving
+  node-global task identities across supervisor-local restarts.
 - Pin `flyology_wire` and add a static codec adapter that measures and encodes
   directly into writable payload leases and decodes inside received leases.
 - Add pinned Linux and macOS continuous integration for the full test suite,

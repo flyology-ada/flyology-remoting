@@ -21,6 +21,13 @@ same node incarnation retains the logical identity and advances the generation.
 An observer always names one exact generation and never silently follows its
 replacement.
 
+The remoting node registry allocates each logical task identity from a
+node-incarnation-wide nonwrapping space and retains the private mapping to its
+exact local supervisor handle. A Flyology `Child_Id` is scoped to one
+supervisor controller and must never be promoted directly into a remoting
+`Task_ID`. The supervisor generation becomes the remoting generation for that
+mapping.
+
 The lifecycle results are distinct:
 
 - `Task_Ended` carries a bounded portable completion summary copied from
@@ -32,8 +39,10 @@ The lifecycle results are distinct:
 
 The portable completion summary omits process-local Ada task and exception
 identities. `Flyology.Remoting.Tasks.From_Supervision` converts the copied
-result of `Flyology.Supervision.Wait_Termination`; the concrete task-kind
-registry remains responsible for calling its static or family supervisor.
+result of `Flyology.Supervision.Wait_Termination` while preserving the exact
+node-global task identity supplied by the registry. The concrete task-kind
+registry remains responsible for calling its static or family supervisor and
+for mapping that identity to the local handle.
 `Flyology.Task_Results` remains the underlying exact-task publication mechanism
 used by supervision.
 

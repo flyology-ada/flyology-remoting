@@ -38,7 +38,7 @@ procedure Task_Lifecycle_Smoke is
        (Identities.Node_ID_From_Words (31, 32), Identities.Incarnation_ID_From_Words (33, 34));
 
    Reference : constant Tasks.Task_Reference :=
-     Tasks.Make_Task_Reference (Node, Tasks.Task_ID_From_Word (7), Tasks.Generation_From_Word (9));
+     Tasks.Make_Task_Reference (Node, Tasks.Task_ID_From_Word (701), Tasks.Generation_From_Word (9));
 
    Termination : Supervision.Termination_Summary;
 
@@ -62,7 +62,7 @@ procedure Task_Lifecycle_Smoke is
 begin
    Assert (Tasks.Is_Valid (Reference), "valid remote task reference was rejected");
    Assert (Tasks.Destination_Node (Reference) = Node, "remote task node identity changed");
-   Assert (Tasks.Identity (Reference) = Tasks.Task_ID_From_Word (7), "remote task identity changed");
+   Assert (Tasks.Identity (Reference) = Tasks.Task_ID_From_Word (701), "remote task identity changed");
    Assert
      (Tasks.Generation (Reference) = Tasks.Generation_From_Word (9),
       "remote task generation changed");
@@ -77,7 +77,7 @@ begin
    declare
       Local : constant Supervision.Generation_Observation :=
         (Status => Supervision.Generation_Terminated, Snapshot => Snapshot (9, Supervision.Terminated));
-      Remote : constant Tasks.Task_Observation := Conversion.To_Observation (Node, Local);
+      Remote : constant Tasks.Task_Observation := Conversion.To_Observation (Reference, Local);
    begin
       Assert (Remote.Status = Tasks.Task_Ended, "terminal generation was not reported as ended");
       Assert
@@ -90,12 +90,15 @@ begin
    declare
       Local : constant Supervision.Generation_Observation :=
         (Status => Supervision.Generation_Replaced, Snapshot => Snapshot (10, Supervision.Running));
-      Remote : constant Tasks.Task_Observation := Conversion.To_Observation (Node, Local);
+      Remote : constant Tasks.Task_Observation := Conversion.To_Observation (Reference, Local);
    begin
       Assert (Remote.Status = Tasks.Task_Replaced, "replacement generation was not reported");
       Assert
         (Tasks.Identity (Remote.Replacement) = Tasks.Identity (Reference),
-         "replacement changed logical task identity");
+         "replacement substituted the supervisor-local child identity");
+      Assert
+        (Tasks.Destination_Node (Remote.Replacement) = Tasks.Destination_Node (Reference),
+         "replacement changed the observed node incarnation");
       Assert
         (Tasks.Generation (Remote.Replacement) = Tasks.Generation_From_Word (10),
          "replacement did not advance task generation");
@@ -103,12 +106,63 @@ begin
 
    declare
       Timed_Out : constant Tasks.Task_Observation :=
-        Conversion.To_Observation (Node, (Status => Supervision.Observation_Timed_Out));
+        Conversion.To_Observation (Reference, (Status => Supervision.Observation_Timed_Out));
       Unreachable : constant Tasks.Task_Observation := (Status => Tasks.Peer_Unreachable);
       Node_Ended  : constant Tasks.Task_Observation := (Status => Tasks.Node_Incarnation_Ended);
    begin
       Assert (Timed_Out.Status = Tasks.Observation_Timed_Out, "timeout changed classification");
       Assert_Status (Unreachable, Tasks.Peer_Unreachable, "disconnect changed classification");
       Assert_Status (Node_Ended, Tasks.Node_Incarnation_Ended, "node death changed classification");
+   end;
+
+   declare
+      Other : constant Tasks.Task_Reference :=
+        Tasks.Make_Task_Reference (Node, Tasks.Task_ID_From_Word (702), Tasks.Generation_From_Word (9));
+      Local : constant Supervision.Generation_Observation :=
+        (Status => Supervision.Generation_Replaced, Snapshot => Snapshot (10, Supervision.Running));
+      First  : constant Tasks.Task_Observation := Conversion.To_Observation (Reference, Local);
+      Second : constant Tasks.Task_Observation := Conversion.To_Observation (Other, Local);
+   begin
+      Assert
+        (Tasks.Identity (First.Replacement) /= Tasks.Identity (Second.Replacement),
+         "distinct node-global task identities collided on one supervisor child identity");
+   end;
+
+   declare
+      function Was_Rejected
+        (Observed : Tasks.Task_Reference; Local : Supervision.Generation_Observation) return Boolean
+      is
+      begin
+         declare
+            Ignored : constant Tasks.Task_Observation := Conversion.To_Observation (Observed, Local);
+            pragma Unreferenced (Ignored);
+         begin
+            return False;
+         end;
+      exception
+         when Program_Error =>
+            return True;
+      end Was_Rejected;
+   begin
+      Assert
+        (Was_Rejected
+           (Reference,
+            (Status => Supervision.Generation_Terminated, Snapshot => Snapshot (8, Supervision.Terminated))),
+         "mismatched terminal generation was accepted");
+      Assert
+        (Was_Rejected
+           (Reference,
+            (Status => Supervision.Generation_Replaced, Snapshot => Snapshot (9, Supervision.Running))),
+         "nonadvancing replacement generation was accepted");
+      Assert
+        (Was_Rejected (Tasks.No_Task, (Status => Supervision.Observation_Timed_Out)),
+         "invalid observed reference was accepted");
+
+      Termination.Kind := Supervision.No_Termination;
+      Assert
+        (Was_Rejected
+           (Reference,
+            (Status => Supervision.Generation_Terminated, Snapshot => Snapshot (9, Supervision.Terminated))),
+         "terminal observation without a completion was accepted");
    end;
 end Task_Lifecycle_Smoke;

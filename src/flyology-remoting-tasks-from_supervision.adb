@@ -1,12 +1,6 @@
 package body Flyology.Remoting.Tasks.From_Supervision is
-
-   function To_Task_Reference
-     (Node : Identities.Node_Reference; Handle : Flyology.Supervision.Child_Handle) return Task_Reference
-   is
-     (Make_Task_Reference
-        (Node,
-         Task_ID_From_Word (Task_Word (Flyology.Supervision.Child (Handle))),
-         Generation_From_Word (Task_Word (Flyology.Supervision.Current_Generation (Handle)))));
+   use type Flyology.Supervision.Termination_Kind;
+   use type Task_Word;
 
    function To_Completion
      (Item : Flyology.Supervision.Termination_Summary) return Completion_Summary
@@ -39,24 +33,37 @@ package body Flyology.Remoting.Tasks.From_Supervision is
    end To_Completion;
 
    function To_Observation
-     (Node : Identities.Node_Reference; Item : Flyology.Supervision.Generation_Observation)
+     (Observed : Task_Reference; Item : Flyology.Supervision.Generation_Observation)
       return Task_Observation
    is
    begin
+      if not Is_Valid (Observed) then
+         raise Program_Error with "invalid remoting task reference";
+      end if;
+
       case Item.Status is
          when Flyology.Supervision.Observation_Timed_Out =>
             return (Status => Observation_Timed_Out);
 
          when Flyology.Supervision.Generation_Terminated =>
+            if Task_Word (Item.Snapshot.Generation) /= To_Word (Generation (Observed)) then
+               raise Program_Error with "terminal supervisor generation does not match observed task";
+            end if;
+            if Item.Snapshot.Termination.Kind = Flyology.Supervision.No_Termination then
+               raise Program_Error with "terminal supervisor observation has no completion";
+            end if;
             return (Status => Task_Ended, Completion => To_Completion (Item.Snapshot.Termination));
 
          when Flyology.Supervision.Generation_Replaced =>
+            if Task_Word (Item.Snapshot.Generation) <= To_Word (Generation (Observed)) then
+               raise Program_Error with "replacement supervisor generation did not advance";
+            end if;
             return
               (Status      => Task_Replaced,
                Replacement =>
                  Make_Task_Reference
-                   (Node,
-                    Task_ID_From_Word (Task_Word (Item.Snapshot.Id)),
+                   (Destination_Node (Observed),
+                    Identity (Observed),
                     Generation_From_Word (Task_Word (Item.Snapshot.Generation))));
       end case;
    end To_Observation;
