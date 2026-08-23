@@ -7,7 +7,11 @@ project Flyology_Remoting_Tests is
    for Exec_Dir use "../bin/tests";
    for Create_Missing_Dirs use "True";
    for Main use
-     ("compile_smoke.adb", "identity_directory_smoke.adb", "in_process_transport_smoke.adb");
+     ("compile_smoke.adb",
+      "identity_directory_smoke.adb",
+      "in_process_transport_smoke.adb",
+      "in_process_node_smoke.adb",
+      "task_lifecycle_smoke.adb");
 
    package Compiler is
       for Default_Switches ("Ada") use

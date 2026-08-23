@@ -100,6 +100,14 @@ the receiver gets callback-scoped read access. Nonblocking send and receive
 make ownership-preserving backpressure, closure, FIFO order, and drainage
 directly testable without a codec dependency.
 
+The endpoint-aware reference node builds a fixed mailbox array over those
+lanes. A protected gate validates and pins exact endpoint generations around
+each nonblocking queue operation. Closing prevents new pins, waits for existing
+operations, drains and releases accepted payloads, and retires the generation
+before its slot can be reused. Endpoint and mailbox capacity are explicit
+generic parameters. A limited controlled endpoint handle owns each claim and
+closes it during finalization, including owner abort and exceptional exit.
+
 The lane's immediate accepted, backpressure, empty, and closed results describe
 only the local bounded queue. IPC and network sessions wrap that primitive and
 retain the common contract's distinct disconnection, deadline, compatibility,
@@ -162,9 +170,13 @@ protected object, rendezvous, or execution-group assignment.
 
 Cancellation is a request delivered to the destination supervisor. It should
 normally drive a Flyology cancellation token and structured cleanup; it is not
-a claim that distributed abort is instantaneous. Waiting observes a published
-completion outcome. A lost connection does not by itself prove that the task
-stopped.
+a claim that distributed abort is instantaneous. Waiting observes one exact
+generation and never follows a replacement. A portable task reference contains
+the exact node incarnation, logical task ID, and nonwrapping generation.
+Destination adapters convert `Flyology.Supervision.Wait_Termination` into
+bounded `Task_Ended` or `Task_Replaced` observations. An authoritative node
+incarnation monitor may report `Node_Incarnation_Ended`; a lost connection
+alone reports only `Peer_Unreachable` and does not prove that the task stopped.
 
 Exactly-once task start is not an initial guarantee. If retryable start is
 later required, the start protocol must define an idempotency identity,

@@ -6,14 +6,16 @@ milestones do not weaken the conformance contract established earlier.
 ## 1. Contract and in-process transport
 
 Status: In progress. Runtime node/session identities, a bounded
-generation-stamped endpoint directory, and the opaque-payload reference lane
-are present with stale-reference, capacity, ownership, FIFO, concurrent
-handoff, closure, and cleanup tests.
+generation-stamped endpoint directory, the opaque-payload reference lane, and
+an endpoint-aware in-process node are present with stale-reference, capacity,
+ownership, FIFO, concurrent handoff/close, reclamation, and cleanup tests.
 
 - Define endpoint references, payload lease ownership, normalized outcomes,
   and session identity without fixing an envelope format. Runtime identity
   values and local endpoint allocation are complete.
 - Implement a bounded in-process transport.
+- Route opaque payloads through bounded endpoint mailboxes and close/drain
+  exact generations before slot reuse.
 - Build a reusable transport-conformance suite covering order, backpressure,
   deadlines, cancellation races, closure, and exact ownership release.
 - Keep the first API one-way; add request/reply only after message correlation
@@ -41,10 +43,14 @@ handoff, closure, and cleanup tests.
 
 ## 4. Remote task lifecycle
 
+- Use exact node/logical-task/generation references and preserve Flyology
+  supervision's ended-versus-replaced observation semantics. The value model
+  and local supervision conversion are complete.
 - Add a bounded registered task-kind catalogue.
 - Implement start acceptance, control endpoint publication, cancellation, and
-  completion observation under local supervision.
-- Specify node incarnation and stale-handle behavior.
+  transport delivery of completion observations under local supervision.
+- Add authoritative node-incarnation death input without treating session
+  disconnection as task death.
 - Add request/reply facades and application receipts as messaging layers.
 
 ## Deferred

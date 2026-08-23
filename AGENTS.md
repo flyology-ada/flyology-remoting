@@ -49,9 +49,14 @@
 - Endpoint references contain a complete node reference, nonzero slot, and
   nonzero nonwrapping generation. Reuse advances the generation; exhaustion
   retires the slot rather than making an old reference current again.
+- Remote task references contain an exact node incarnation, logical task ID,
+  and nonwrapping generation. Preserve the distinction between task ended,
+  task replaced, authoritative node-incarnation death, session unreachability,
+  and observation timeout. Never infer task death from disconnection alone and
+  never follow a replacement generation implicitly.
 - Never serialize an Ada `Codec_Descriptor` object representation. Encode and
-  validate each `flyology_wire` identity in its canonical form when envelopes
-  are introduced.
+  validate the 56-byte `flyology_wire` `Schema_Identity` once when envelopes
+  are introduced, then pass that same writer identity to decode.
 
 ## Repository workflow
 

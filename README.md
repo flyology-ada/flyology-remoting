@@ -6,10 +6,11 @@ one endpoint and messaging model across an in-process transport, local
 interprocess communication, and network connections.
 
 The project is currently establishing its contracts. It provides runtime node,
-session, and generation-stamped endpoint identities plus a bounded in-process
-reference lane for opaque payload ownership and conformance work. It does not
-yet provide endpoint mailboxes, routing, IPC, network transport, or remote
-tasks.
+session, generation-stamped endpoint and remote-task identities, a bounded
+in-process reference lane, and an endpoint-aware in-process node for opaque
+payload ownership and conformance work. It does not yet provide cross-node
+routing, IPC, network transport, registered task start, or remote lifecycle
+delivery.
 
 ## Scope
 
@@ -45,6 +46,20 @@ or acquiring mutable access.
 This is the executable semantic reference for later IPC and network adapters,
 not a separate application messaging API. It deliberately carries opaque bytes
 and defines no type IDs, schema values, framing, endpoints, or codec contract.
+
+`Flyology.Remoting.Nodes.In_Process` adds fixed-capacity endpoint mailboxes over
+the lane. It rejects foreign, stale-incarnation, stale-generation, and closing
+destinations before queue access. Closing drains accepted payloads and advances
+the slot generation before reuse. A limited controlled handle owns each local
+claim and closes it during finalization.
+
+## Remote task observation
+
+Remote task references identify one logical task generation in one exact node
+incarnation. The local adapter converts Flyology supervision observations into
+bounded portable outcomes: ended, replaced, timed out, node incarnation ended,
+or peer unreachable. A disconnect is deliberately not called task death, and
+an exact-generation observation never follows a restarted task automatically.
 
 ## Initial delivery contract
 
@@ -100,11 +115,12 @@ alr build
 ./scripts/test.sh
 ```
 
-The tests verify that the companion crate compiles and exercise reference-lane
-ownership, backpressure, FIFO order, concurrent lightweight-task handoff,
-closure, and undelivered-payload cleanup. They also exercise invalid identity
-sentinels, restart and reconnect freshness, bounded endpoint allocation, stale
-reference rejection, slot reuse, and concurrent claims.
+The test harness builds the crate and exercises reference-lane
+and endpoint-node ownership, backpressure, FIFO order, concurrent lightweight
+task handoff and close, closure, and undelivered-payload cleanup. They also
+exercise invalid identity sentinels, restart and reconnect freshness, bounded
+endpoint allocation, stale reference rejection, slot reuse, concurrent claims,
+and portable exact-generation lifecycle conversion.
 
 ## License
 
