@@ -83,6 +83,18 @@ The first transport is an executable reference model. It uses bounded
 single-owner payload transfer and establishes the conformance suite without
 IPC framing or network failure injection. It is not a special fast-path API.
 
+The implemented first slice is a generic unidirectional lane over a
+caller-owned Flyology buffer pool. Its writable and received payload handles
+are different limited types: only the sender can borrow mutable storage, while
+the receiver gets callback-scoped read access. Nonblocking send and receive
+make ownership-preserving backpressure, closure, FIFO order, and drainage
+directly testable without a codec dependency.
+
+The lane's immediate accepted, backpressure, empty, and closed results describe
+only the local bounded queue. IPC and network sessions wrap that primitive and
+retain the common contract's distinct disconnection, deadline, compatibility,
+authorization, and resource failures.
+
 ### Shared-memory IPC transport
 
 The IPC transport separates setup and signaling from bulk data:

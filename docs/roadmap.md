@@ -5,6 +5,9 @@ milestones do not weaken the conformance contract established earlier.
 
 ## 1. Contract and in-process transport
 
+Status: In progress. The bounded opaque-payload lane and its initial ownership,
+backpressure, FIFO, concurrent handoff, closure, and cleanup tests are present.
+
 - Define endpoint references, payload lease ownership, normalized outcomes,
   and session identity without fixing a serialization format.
 - Implement a bounded in-process transport.
