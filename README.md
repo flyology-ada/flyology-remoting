@@ -5,8 +5,9 @@ Flyology Remoting is an experimental, message-oriented remoting library for
 one endpoint and messaging model across an in-process transport, local
 interprocess communication, and network connections.
 
-The project is currently establishing its contracts. It does not yet provide
-a working transport or remote task API.
+The project is currently establishing its contracts. It provides a bounded
+in-process reference lane for opaque payload ownership and conformance work; it
+does not yet provide endpoint routing, IPC, network transport, or remote tasks.
 
 ## Scope
 
@@ -26,7 +27,22 @@ and registered task kinds:
   network transport without changing the application messaging API.
 
 See [Architecture](docs/architecture.md) for the accepted foundations and
-[Roadmap](docs/roadmap.md) for the implementation sequence.
+[Roadmap](docs/roadmap.md) for the implementation sequence. Every architecture
+decision and change follows the repository's [review policy](docs/review-policy.md).
+
+## Reference transport
+
+`Flyology.Remoting.Transports.In_Process` is a generic, fixed-capacity FIFO
+lane over a caller-owned `Flyology.Buffers.Pool`. A writable payload transfers
+to the lane only on `Message_Accepted`; backpressure and closure preserve its
+ownership. A received payload exposes only a callback-scoped readable borrow.
+Closing a lane rejects new sends and drains already accepted payloads.
+Received payloads can be forwarded to another compatible lane without copying
+or acquiring mutable access.
+
+This is the executable semantic reference for later IPC and network adapters,
+not a separate application messaging API. It deliberately carries opaque bytes
+and defines no type IDs, schema values, framing, endpoints, or codec contract.
 
 ## Initial delivery contract
 
@@ -82,8 +98,9 @@ alr build
 ./scripts/test.sh
 ```
 
-The current smoke test verifies that the companion crate and its
-`Flyology.Remoting` namespace compile against the selected Flyology version.
+The tests verify that the companion crate compiles and exercise reference-lane
+ownership, backpressure, FIFO order, concurrent lightweight-task handoff,
+closure, and undelivered-payload cleanup.
 
 ## License
 

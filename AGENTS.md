@@ -59,6 +59,23 @@
 - Run `gh` outside the sandbox. Repository:
   `flyology-ada/flyology-remoting`.
 
+## Review cycle
+
+- Run an explicit review cycle for every architecture decision and every code,
+  test, build, or documentation change before committing it.
+- Review architecture changes against dependency direction, ownership,
+  boundedness, ordering, delivery, failure, trust, compatibility, and stated
+  non-goals. Review implementation changes against the accepted decisions,
+  Ada lifetime rules, cleanup on every exit, and executable test evidence.
+- Classify actionable findings as P0, P1, P2, or P3 using
+  `docs/review-policy.md`.
+- Fix every P0 and P1 before commit. Fix P2 findings when they are reasonably
+  within the change's scope; otherwise record a concrete deferral rationale and
+  follow-up location. P3 findings may remain as suggestions.
+- After fixes, rerun the relevant checks and repeat the review. Do not commit
+  until the final pass has no open P0 or P1 finding and every P2 has been fixed
+  or explicitly dispositioned.
+
 ## Commits
 
 Use focused Problem/Solution commit messages:
