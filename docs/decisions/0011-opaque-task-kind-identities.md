@@ -1,6 +1,6 @@
 # 0011: Use opaque task-kind identities with exact versions
 
-Status: Proposed
+Status: Accepted
 
 ## Context
 

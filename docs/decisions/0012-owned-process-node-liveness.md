@@ -1,6 +1,6 @@
 # 0012: Recognize node death only from an exact owned-process authority
 
-Status: Proposed
+Status: Accepted
 
 ## Context
 

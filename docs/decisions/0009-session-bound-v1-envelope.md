@@ -1,6 +1,6 @@
 # 0009: Bind the version-one envelope to an established session
 
-Status: Proposed
+Status: Accepted
 
 ## Context
 

@@ -1,6 +1,6 @@
 # 0010: Commit send acceptance at bounded remoting admission
 
-Status: Proposed
+Status: Accepted
 
 ## Context
 
