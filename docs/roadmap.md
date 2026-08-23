@@ -17,7 +17,9 @@ directly over node payload leases without an intermediate array.
   values and local endpoint allocation are complete.
 - Implement a bounded in-process transport.
 - Route opaque payloads through bounded endpoint mailboxes and close/drain
-  exact generations before slot reuse.
+  exact generations before slot reuse. A reusable immediate local-node harness
+  now covers deterministic owner, bounded claim, routing, ownership,
+  close/drain, and generation-reuse behavior.
 - Apply statically bound wire codecs directly to writable and received payload
   leases while passing the validated writer schema unchanged. The common
   codec-over-lease adapter is transport-independent; the in-process package is

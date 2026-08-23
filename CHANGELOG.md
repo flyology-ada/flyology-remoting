@@ -25,3 +25,5 @@
   ownership, FIFO, backpressure, forwarding, closure, and exact release.
 - Factor direct wire encoding and decode-under-lease into a transport-generic
   codec adapter while retaining the in-process facade.
+- Add reusable immediate local-node conformance for bounded claims, routing,
+  ownership, close/drain, and generation-safe endpoint reuse.

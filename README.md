@@ -59,6 +59,12 @@ destinations before queue access. Closing drains accepted payloads and advances
 the slot generation before reuse. A limited controlled handle owns each local
 claim and closes it during finalization.
 
+A reusable test-only local-node contract qualifies deterministic owner, bounded
+claim, routing classification, FIFO, ownership, close/drain, and generation
+reuse behavior. In-process abort cleanup and concurrent close remain separate
+implementation tests. This is destination-router conformance, not session or
+cross-node transport conformance.
+
 ## Remote task observation
 
 Remote task references identify one logical task generation in one exact node

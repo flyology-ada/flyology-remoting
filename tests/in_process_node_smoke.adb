@@ -5,6 +5,7 @@ with Flyology.Remoting.Endpoints;
 with Flyology.Remoting.Identities;
 with Flyology.Remoting.Nodes;
 with Flyology.Remoting.Nodes.In_Process;
+with Remoting_Local_Node_Conformance;
 
 procedure In_Process_Node_Smoke is
    package Buffers renames Flyology.Buffers;
@@ -14,8 +15,6 @@ procedure In_Process_Node_Smoke is
 
    use type Ada.Streams.Stream_Element_Array;
    use type Buffers.Pool_Snapshot;
-   use type Endpoints.Endpoint_Generation;
-   use type Endpoints.Endpoint_Slot;
    use type Identities.Node_Reference;
    use type Nodes.Claim_Result;
    use type Nodes.Close_Result;
@@ -38,114 +37,66 @@ procedure In_Process_Node_Smoke is
         (Identities.Node_ID_From_Words (Node_High, Node_Low),
          Identities.Incarnation_ID_From_Words (Incarnation_High, Incarnation_Low)));
 
-   procedure Run_Routing_And_Reclaim is
+   procedure Run_Reusable_Conformance is
       Storage : aliased Buffers.Pool (Block_Size => 16, Capacity => 5);
 
       package Local is new
         Flyology.Remoting.Nodes.In_Process
           (Storage                                      => Storage'Access,
            Endpoint_Capacity                            => 1,
-           Mailbox_Capacity                             => 1,
+           Mailbox_Capacity                             => 2,
            Maximum_Concurrent_Operations_Per_Endpoint => 4);
 
-      Owner          : constant Identities.Node_Reference := Node_Identity (1, 2, 3, 4);
-      Other_Node     : constant Identities.Node_Reference := Node_Identity (5, 6, 7, 8);
-      Other_Lifetime : constant Identities.Node_Reference := Node_Identity (1, 2, 9, 10);
-      Server         : aliased Local.Node := Local.Create (Owner);
-      Endpoint_Owner : Local.Endpoint_Handle (Server'Access) := Local.Claim (Server'Access);
-      Endpoint       : constant Endpoints.Endpoint_Reference := Local.Reference (Endpoint_Owner);
-      Full_Owner     : constant Local.Endpoint_Handle (Server'Access) := Local.Claim (Server'Access);
-      Foreign        : Endpoints.Endpoint_Reference;
-      Old_Lifetime   : Endpoints.Endpoint_Reference;
-      Outbound       : Local.Writable_Payload;
-      Second         : Local.Writable_Payload;
-      Inbound        : Local.Received_Payload;
-      Send           : Nodes.Try_Send_Result;
-      Receive_Result : Nodes.Try_Receive_Result;
-      Closed         : Nodes.Close_Result;
-
-      procedure Check (Data : Ada.Streams.Stream_Element_Array) is
+      function Create_Writable return Local.Writable_Payload is
       begin
-         Assert (Data = [11, 12, 13], "node routing changed payload bytes");
-      end Check;
+         return Result : Local.Writable_Payload do
+            null;
+         end return;
+      end Create_Writable;
+
+      function Create_Received return Local.Received_Payload is
+      begin
+         return Result : Local.Received_Payload do
+            null;
+         end return;
+      end Create_Received;
+
+      function Resources_Balanced return Boolean is
+        (Buffers.Current (Storage) = (Available => 5, Outstanding => 0));
+
+      package Conformance is new
+        Remoting_Local_Node_Conformance
+          (Endpoint_Capacity  => 1,
+           Mailbox_Capacity   => 2,
+           Local_Node         => Local.Node,
+           Endpoint_Handle    => Local.Endpoint_Handle,
+           Writable_Payload   => Local.Writable_Payload,
+           Received_Payload   => Local.Received_Payload,
+           Create_Node        => Local.Create,
+           Node_Owner         => Local.Owner,
+           Claim              => Local.Claim,
+           Claim_Status       => Local.Status,
+           Has_Endpoint       => Local.Has_Endpoint,
+           Reference          => Local.Reference,
+           Create_Writable    => Create_Writable,
+           Create_Received    => Create_Received,
+           Acquire            => Local.Payload_Transport.Acquire,
+           Release_Received   => Local.Payload_Transport.Release,
+           Has_Writable       => Local.Payload_Transport.Has_Payload,
+           Has_Received       => Local.Payload_Transport.Has_Payload,
+           Copy_From          => Local.Payload_Transport.Copy_From,
+           Read_Writable      => Local.Payload_Transport.With_Readable_Data,
+           Read_Received      => Local.Payload_Transport.With_Readable_Data,
+           Try_Send_Writable  => Local.Try_Send,
+           Try_Send_Received  => Local.Try_Send,
+           Try_Receive        => Local.Try_Receive,
+           Close              => Local.Close,
+           Is_Current         => Local.Is_Current,
+           Current            => Local.Current,
+           Resources_Balanced => Resources_Balanced);
    begin
-      Assert (Local.Status (Endpoint_Owner) = Nodes.Endpoint_Claimed, "node did not claim its endpoint");
-      Assert (Endpoints.Destination_Node (Endpoint) = Owner, "claimed endpoint has the wrong owner");
-      Assert
-        (Local.Status (Full_Owner) = Nodes.Directory_Full,
-         "full node directory returned the wrong claim result");
-
-      Local.Payload_Transport.Acquire (Outbound);
-      Local.Payload_Transport.Copy_From (Outbound, [11, 12, 13]);
-      Local.Try_Send (Server, Endpoint, Outbound, Send);
-      Assert
-        (Send = Nodes.Message_Accepted and then not Local.Payload_Transport.Has_Payload (Outbound),
-         "node did not transfer accepted payload ownership");
-
-      Local.Payload_Transport.Acquire (Second);
-      Local.Payload_Transport.Copy_From (Second, [14]);
-      Local.Try_Send (Server, Endpoint, Second, Send);
-      Assert
-        (Send = Nodes.Backpressure and then Local.Payload_Transport.Has_Payload (Second),
-         "node backpressure consumed caller ownership");
-
-      Local.Try_Receive (Server, Endpoint, Inbound, Receive_Result);
-      Assert (Receive_Result = Nodes.Message_Received, "node did not receive an accepted payload");
-      Local.Payload_Transport.With_Readable_Data (Inbound, Check'Access);
-      Local.Payload_Transport.Release (Inbound);
-
-      Foreign :=
-        Endpoints.Make_Endpoint_Reference
-          (Other_Node, Endpoints.Slot (Endpoint), Endpoints.Generation (Endpoint));
-      Local.Try_Send (Server, Foreign, Second, Send);
-      Assert (Send = Nodes.Foreign_Node, "node did not classify a foreign logical node");
-
-      Old_Lifetime :=
-        Endpoints.Make_Endpoint_Reference
-          (Other_Lifetime, Endpoints.Slot (Endpoint), Endpoints.Generation (Endpoint));
-      Local.Try_Send (Server, Old_Lifetime, Second, Send);
-      Assert (Send = Nodes.Stale_Incarnation, "node did not classify a stale incarnation");
-
-      Local.Try_Send (Server, Endpoint, Second, Send);
-      Assert (Send = Nodes.Message_Accepted, "node did not refill the mailbox");
-      Local.Close (Endpoint_Owner, Closed);
-      Assert (Closed = Nodes.Endpoint_Closed, "node did not close its endpoint");
-      Assert
-        (not Local.Has_Endpoint (Endpoint_Owner)
-         and then Local.Status (Endpoint_Owner) = Nodes.Endpoint_Claimed,
-         "closed endpoint handle lost its original claim outcome");
-      Assert
-        (Local.Current (Server) = (Active => 0, Closing => 0, Available => 1, Exhausted => 0),
-         "node close left incorrect directory accounting");
-      Assert
-        (Buffers.Current (Storage) = (Available => 5, Outstanding => 0),
-         "node close did not drain accepted payload ownership");
-
-      declare
-         Replacement_Owner : Local.Endpoint_Handle (Server'Access) := Local.Claim (Server'Access);
-         Replacement       : constant Endpoints.Endpoint_Reference := Local.Reference (Replacement_Owner);
-      begin
-         Assert
-           (Local.Status (Replacement_Owner) = Nodes.Endpoint_Claimed,
-            "node did not reclaim a retired slot");
-         Assert
-           (Endpoints.Slot (Replacement) = Endpoints.Slot (Endpoint),
-            "node reclaimed another slot");
-         Assert
-           (Endpoints.Generation (Replacement) /= Endpoints.Generation (Endpoint),
-            "node reuse did not advance the endpoint generation");
-
-         Local.Payload_Transport.Acquire (Second);
-         Local.Payload_Transport.Copy_From (Second, [15]);
-         Local.Try_Send (Server, Endpoint, Second, Send);
-         Assert
-           (Send = Nodes.Stale_Endpoint and then Local.Payload_Transport.Has_Payload (Second),
-            "stale endpoint send was accepted or consumed");
-         Local.Payload_Transport.Release (Second);
-         Local.Close (Replacement_Owner, Closed);
-         Assert (Closed = Nodes.Endpoint_Closed, "replacement endpoint did not close");
-      end;
-   end Run_Routing_And_Reclaim;
+      Conformance.Run;
+   end Run_Reusable_Conformance;
 
    procedure Run_Handle_Finalization is
       Storage : aliased Buffers.Pool (Block_Size => 8, Capacity => 2);
@@ -376,7 +327,7 @@ procedure In_Process_Node_Smoke is
          "concurrent close leaked payload ownership");
    end Run_Concurrent_Close;
 begin
-   Run_Routing_And_Reclaim;
+   Run_Reusable_Conformance;
    Run_Handle_Finalization;
    Run_Aborted_Handle;
    Run_Concurrent_Close;
