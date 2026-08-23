@@ -132,6 +132,10 @@ value encoded through an endpoint mailbox without replacing its payload
 storage. Codec failures cover short output, invalid values, incompatible writer
 schemas, malformed bytes, and noncanonical bytes.
 
+Continuous integration runs the same suite on Linux and macOS with a pinned
+Alire and GNAT toolchain. It also compiles the library separately in release
+mode, so the checked test build is not the only consumer configuration covered.
+
 ## Agent setup
 
 This repository uses APM 0.28.0 to provision one locked graph of shared and

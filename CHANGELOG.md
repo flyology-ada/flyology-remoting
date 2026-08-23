@@ -14,3 +14,5 @@
   and conversion from Flyology supervision observations.
 - Pin `flyology_wire` and add a static codec adapter that measures and encodes
   directly into writable payload leases and decodes inside received leases.
+- Add pinned Linux and macOS continuous integration for the full test suite,
+  plus an independent Linux release build.
