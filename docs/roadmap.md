@@ -8,7 +8,9 @@ milestones do not weaken the conformance contract established earlier.
 Status: In progress. Runtime node/session identities, a bounded
 generation-stamped endpoint directory, the opaque-payload reference lane, and
 an endpoint-aware in-process node are present with stale-reference, capacity,
-ownership, FIFO, concurrent handoff/close, reclamation, and cleanup tests.
+ownership, FIFO, concurrent handoff/close, reclamation, and cleanup tests. The
+published `flyology_wire` static codec contract is pinned and exercised
+directly over node payload leases without an intermediate array.
 
 - Define endpoint references, payload lease ownership, normalized outcomes,
   and session identity without fixing an envelope format. Runtime identity
@@ -16,6 +18,8 @@ ownership, FIFO, concurrent handoff/close, reclamation, and cleanup tests.
 - Implement a bounded in-process transport.
 - Route opaque payloads through bounded endpoint mailboxes and close/drain
   exact generations before slot reuse.
+- Apply statically bound wire codecs directly to writable and received payload
+  leases while passing the validated writer schema unchanged.
 - Build a reusable transport-conformance suite covering order, backpressure,
   deadlines, cancellation races, closure, and exact ownership release.
 - Keep the first API one-way; add request/reply only after message correlation

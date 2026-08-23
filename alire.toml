@@ -13,6 +13,12 @@ project-files = ["flyology_remoting.gpr"]
 [[depends-on]]
 flyology = "=0.1.1-dev"
 
+[[depends-on]]
+flyology_wire = "=0.1.0-dev"
+
+[[pins]]
+flyology_wire = { url = "https://github.com/flyology-ada/flyology-wire.git", commit = "97dc25218a33a6dabfba9b726239d5daab676128" }
+
 [available.'case(os)']
 'linux|macos' = true
 '...' = false

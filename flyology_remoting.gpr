@@ -1,4 +1,5 @@
 with "flyology.gpr";
+with "flyology_wire.gpr";
 with "config/flyology_remoting_config.gpr";
 
 project Flyology_Remoting is
@@ -28,5 +29,14 @@ project Flyology_Remoting is
    package Binder is
       for Switches ("Ada") use ("-Es");
    end Binder;
+
+   package Format is
+      for Width ("Ada") use "110";
+      for Indentation ("Ada") use "3";
+      for Indentation_Continuation ("Ada") use "2";
+      for Indentation_Kind ("Ada") use "spaces";
+      for End_Of_Line ("Ada") use "lf";
+      for Charset ("Ada") use "utf-8";
+   end Format;
 
 end Flyology_Remoting;

@@ -12,3 +12,5 @@
   close/drain reclamation, and concurrent-close ownership tests.
 - Add exact-generation remote task references, portable lifecycle outcomes,
   and conversion from Flyology supervision observations.
+- Pin `flyology_wire` and add a static codec adapter that measures and encodes
+  directly into writable payload leases and decodes inside received leases.

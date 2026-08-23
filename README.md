@@ -8,9 +8,10 @@ interprocess communication, and network connections.
 The project is currently establishing its contracts. It provides runtime node,
 session, generation-stamped endpoint and remote-task identities, a bounded
 in-process reference lane, and an endpoint-aware in-process node for opaque
-payload ownership and conformance work. It does not yet provide cross-node
-routing, IPC, network transport, registered task start, or remote lifecycle
-delivery.
+payload ownership and conformance work. A pinned `flyology_wire` codec can
+encode directly into and decode directly from those payload leases. The
+project does not yet provide cross-node routing, IPC, network transport,
+registered task start, or remote lifecycle delivery.
 
 ## Scope
 
@@ -98,10 +99,16 @@ mixing ordinary frames with that channel.
 ## Serialization boundary
 
 Remoting consumes opaque encoded bytes plus message type and schema identity.
-The sibling serialization project will define which Ada values can cross the
-boundary, codec generation, schema evolution, and whether a payload supports a
-validated borrowed view. Remoting will not use Ada object layout, native
-addresses, access values, or runtime tags as a wire format.
+The sibling `flyology_wire` crate owns which Ada values can cross the boundary,
+codec generation, schema evolution, and whether a payload supports a validated
+borrowed view. Remoting does not use Ada object layout, native addresses,
+access values, or runtime tags as a wire format.
+
+The current integration pins `flyology_wire` at a reviewed commit and accepts
+its static codec contract directly. A codec measures a value before remoting
+lends its writable payload block, encodes into that block without an
+intermediate copy, and decodes a received block under the validated writer
+schema identity while the payload lease remains owned by remoting.
 
 ## Build and test
 
@@ -120,7 +127,10 @@ and endpoint-node ownership, backpressure, FIFO order, concurrent lightweight
 task handoff and close, closure, and undelivered-payload cleanup. They also
 exercise invalid identity sentinels, restart and reconnect freshness, bounded
 endpoint allocation, stale reference rejection, slot reuse, concurrent claims,
-and portable exact-generation lifecycle conversion.
+portable exact-generation lifecycle conversion, and a canonical Profile 1
+value encoded through an endpoint mailbox without replacing its payload
+storage. Codec failures cover short output, invalid values, incompatible writer
+schemas, malformed bytes, and noncanonical bytes.
 
 ## Agent setup
 
