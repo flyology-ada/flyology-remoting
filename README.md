@@ -82,7 +82,9 @@ bounded portable outcomes: ended, replaced, timed out, node incarnation ended,
 or peer unreachable. A disconnect is deliberately not called task death, and
 an exact-generation observation never follows a restarted task automatically.
 The generic local observer verifies the registry-retained supervisor handle's
-generation before entering Flyology's atomic exact-generation wait.
+generation before entering Flyology's atomic exact-generation wait. A focused
+integration fixture instantiates that seam directly against a real
+`Flyology.Supervision.Families` exact wait.
 
 ## Initial delivery contract
 

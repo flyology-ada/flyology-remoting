@@ -59,7 +59,8 @@ directly over node payload leases without an intermediate array.
 - Use exact node/logical-task/generation references and preserve Flyology
   supervision's ended-versus-replaced observation semantics. The value model,
   local supervision conversion, and checked exact-generation wait adapter are
-  complete.
+  complete, including direct generic-instantiation coverage against a real
+  `Flyology.Supervision.Families` exact wait.
 - Add a bounded registered task-kind catalogue.
 - Implement start acceptance, control endpoint publication, cancellation, and
   transport delivery of completion observations under local supervision.

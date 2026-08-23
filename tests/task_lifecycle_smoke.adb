@@ -1,11 +1,16 @@
 with Ada.Real_Time;
+with Ada.Task_Identification;
 with Flyology;
+with Flyology.Cancellation;
 with Flyology.Execution_Groups;
 with Flyology.Remoting.Identities;
 with Flyology.Remoting.Tasks;
 with Flyology.Remoting.Tasks.From_Supervision;
 with Flyology.Remoting.Tasks.Local_Observers;
 with Flyology.Supervision;
+with Flyology.Supervision.Families;
+with Flyology.Supervision.Input_Task_Generations;
+with System.Multiprocessors;
 
 procedure Task_Lifecycle_Smoke is
    package Identities renames Flyology.Remoting.Identities;
@@ -13,12 +18,14 @@ procedure Task_Lifecycle_Smoke is
    package Conversion renames Flyology.Remoting.Tasks.From_Supervision;
    package Supervision renames Flyology.Supervision;
 
+   use type Ada.Real_Time.Time;
    use type Identities.Node_Reference;
    use type Supervision.Child_State;
    use type Tasks.Completion_Kind;
    use type Tasks.Observation_Status;
    use type Tasks.Task_Generation;
    use type Tasks.Task_ID;
+   use type Tasks.Task_Word;
 
    procedure Assert (Condition : Boolean; Message : String) is
    begin
@@ -176,6 +183,204 @@ procedure Task_Lifecycle_Smoke is
       end;
    end Run_Local_Observer;
 
+   procedure Run_Family_Observer_Integration is
+      type Family_Request is (Only_Request);
+      type Family_Context is limited null record;
+
+      task type Family_Task
+        (State   : not null access Family_Context;
+         Input   : not null access constant Family_Request;
+         Control : not null access Supervision.Generation_Control)
+        with CPU => System.Multiprocessors.Not_A_Specific_CPU
+      is
+         pragma Task_Info (Flyology.Native_Task);
+      end Family_Task;
+
+      task body Family_Task is
+         pragma Unreferenced (State, Input);
+      begin
+         Supervision.Mark_Ready (Control.all);
+         loop
+            exit when Supervision.Stop_Requested (Control.all);
+            delay 0.001;
+         end loop;
+         raise Flyology.Cancellation.Operation_Cancelled;
+      end Family_Task;
+
+      function Create_Family_Task
+        (State   : not null access Family_Context;
+         Input   : not null access constant Family_Request;
+         Control : not null access Supervision.Generation_Control) return Family_Task is
+      begin
+         return Subject : Family_Task (State, Input, Control);
+      end Create_Family_Task;
+
+      function Task_Identity
+        (Subject : in out Family_Task) return Ada.Task_Identification.Task_Id is
+        (Subject'Identity);
+
+      procedure Abort_Family_Task (Subject : in out Family_Task) is
+      begin
+         abort Subject;
+      end Abort_Family_Task;
+
+      package Family_Child is new
+        Flyology.Supervision.Input_Task_Generations
+          (Input_Type          => Family_Request,
+           Application_Context => Family_Context,
+           Generation_Task     => Family_Task,
+           Create              => Create_Family_Task,
+           Task_Identity       => Task_Identity,
+           Abort_Task          => Abort_Family_Task);
+
+      procedure Run_Family_Generation
+        (State   : aliased in out Family_Context;
+         Input   : Family_Request;
+         Control : aliased in out Supervision.Generation_Control;
+         Result  : out Supervision.Generation_Result) is
+      begin
+         Family_Child.Run (State, Input, Control, Result);
+      end Run_Family_Generation;
+
+      Family_Policy : constant Supervision.Child_Specification :=
+        (Restart           => Supervision.Never,
+         Impact            => Supervision.Escalate,
+         Recovery          => Supervision.Default_Recovery_Limits,
+         Stopping          => Supervision.Default_Stop_Policy,
+         Readiness_Timeout => Ada.Real_Time.Seconds (1),
+         Restart_Safe      => True,
+         Task_Model        => Flyology.Native_Task,
+         Has_Group         => False,
+         Group             => 0);
+
+      package Families is new
+        Flyology.Supervision.Families
+          (Request             => Family_Request,
+           Application_Context => Family_Context,
+           Run_One_Generation  => Run_Family_Generation,
+           Policy              => Family_Policy,
+           First_Child_Id      => 9_000_000_000,
+           Maximum_Children    => 2,
+           Event_Capacity      => 4,
+           Monitor_Capacity    => 2);
+
+      package Family_Observer is new
+        Tasks.Local_Observers
+          (Local_Supervisor  => Families.Family,
+           Local_Handle      => Supervision.Child_Handle,
+           Handle_Generation => Supervision.Current_Generation,
+           Wait_Termination  => Families.Wait_Termination);
+
+      State  : aliased Family_Context;
+      Item   : aliased Families.Family;
+      Result : Supervision.Supervisor_Result;
+
+      task Owner is
+         entry Start;
+         entry Join;
+      end Owner;
+
+      task body Owner is
+      begin
+         accept Start;
+         Families.Run (Item, State, Result);
+         accept Join;
+      end Owner;
+
+      procedure Shutdown_And_Join is
+      begin
+         Families.Request_Shutdown (Item);
+         Owner.Join;
+      end Shutdown_And_Join;
+
+      Deadline : Ada.Real_Time.Time;
+      Handle   : Supervision.Child_Handle;
+   begin
+      Owner.Start;
+      begin
+         pragma Warnings (Off, "variable ""Item"" is not modified in loop body");
+         pragma Warnings (Off, "possible infinite loop");
+         Deadline := Ada.Real_Time.Clock + Ada.Real_Time.Seconds (2);
+         loop
+            exit when Families.Accepting (Item);
+            if Ada.Real_Time.Clock >= Deadline then
+               raise Program_Error with "real family did not open admission";
+            end if;
+            delay 0.001;
+         end loop;
+
+         Families.Start (Item, Only_Request, Handle);
+         Deadline := Ada.Real_Time.Clock + Ada.Real_Time.Seconds (2);
+         loop
+            exit when Families.Current (Item, Handle).Ready;
+            if Ada.Real_Time.Clock >= Deadline then
+               declare
+                  Current : constant Supervision.Child_Snapshot := Families.Current (Item, Handle);
+               begin
+                  raise Program_Error with
+                    "real family generation did not become ready: "
+                    & Supervision.Child_State'Image (Current.State)
+                    & ", live="
+                    & Boolean'Image (Current.Live)
+                    & ", termination="
+                    & Supervision.Termination_Kind'Image (Current.Termination.Kind)
+                    & ", exception="
+                    & Supervision.Exception_Name_Text (Current.Termination)
+                    & ", message="
+                    & Supervision.Message_Text (Current.Termination);
+               end;
+            end if;
+            delay 0.001;
+         end loop;
+         pragma Warnings (On, "possible infinite loop");
+         pragma Warnings (On, "variable ""Item"" is not modified in loop body");
+
+         declare
+            Observed : constant Tasks.Task_Reference :=
+              Tasks.Make_Task_Reference
+                (Node,
+                 Tasks.Task_ID_From_Word (703),
+                 Tasks.Generation_From_Word
+                   (Tasks.Task_Word (Supervision.Current_Generation (Handle))));
+            Observation : constant Tasks.Task_Observation :=
+              Family_Observer.Observe_Exact (Item, Handle, Observed, Timeout => 0.0);
+            Mismatch_Rejected : Boolean := False;
+            Mismatch_Returned : Boolean := False;
+         begin
+            Assert
+              (Observation.Status = Tasks.Observation_Timed_Out,
+               "real family running wait changed timeout status");
+
+            begin
+               declare
+                  Mismatched : constant Tasks.Task_Reference :=
+                    Tasks.Make_Task_Reference
+                      (Node,
+                       Tasks.Task_ID_From_Word (703),
+                       Tasks.Generation_From_Word (Tasks.To_Word (Tasks.Generation (Observed)) + 1));
+                  Ignored : constant Tasks.Task_Observation :=
+                    Family_Observer.Observe_Exact (Item, Handle, Mismatched, Timeout => 0.0);
+                  pragma Unreferenced (Ignored);
+               begin
+                  Mismatch_Returned := True;
+               end;
+            exception
+               when Program_Error =>
+                  Mismatch_Rejected := True;
+            end;
+            Assert
+              (Mismatch_Rejected and then not Mismatch_Returned,
+               "real family adapter accepted a mismatched remoting generation");
+         end;
+
+         Shutdown_And_Join;
+      exception
+         when others =>
+            Shutdown_And_Join;
+            raise;
+      end;
+   end Run_Family_Observer_Integration;
+
 begin
    Assert (Tasks.Is_Valid (Reference), "valid remote task reference was rejected");
    Assert (Tasks.Destination_Node (Reference) = Node, "remote task node identity changed");
@@ -192,6 +397,7 @@ begin
    Termination.Message (1 .. 4) := "boom";
 
    Run_Local_Observer;
+   Run_Family_Observer_Integration;
 
    declare
       Local : constant Supervision.Generation_Observation :=

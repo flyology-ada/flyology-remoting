@@ -23,6 +23,8 @@
   malformed protocol or handshake input is session-fatal.
 - Add a checked generic adapter from registry-retained supervisor handles to
   Flyology's exact-generation lifecycle wait.
+- Exercise the local observer adapter directly against a real
+  `Flyology.Supervision.Families` exact-wait seam.
 - Add a reusable payload-lane conformance harness for immediate bounded
   ownership, FIFO, backpressure, forwarding, closure, and exact release.
 - Factor direct wire encoding and decode-under-lease into a transport-generic
