@@ -40,3 +40,6 @@
 - Add exact-binding in-process session ingress with complete-route validation,
   private header construction, bounded acceptance, binding-retaining transport
   dequeue, cross-role forwarding, synchronous drain, and a typed Wire round trip.
+- Accept the compound-aware endpoint-delivery architecture with complementary
+  session paths, context-owned linearization and cleanup, heterogeneous buffer
+  domains, retained delivery outcomes, and exact liveness fencing.

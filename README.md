@@ -27,6 +27,11 @@ ownership is implemented by the bounded in-process reference transport. The
 immediate in-process session ingress now validates complete outbound routes,
 retains the exact binding at bounded acceptance, and reconstructs complete
 endpoint references for transport drivers. Endpoint delivery remains pending.
+Decision 0013 now accepts the compound-aware endpoint-delivery architecture:
+one context owns session and path linearization, a bounded buffer domain moves
+heterogeneous pool capabilities without copying, and compound-node mailboxes
+retain exact session/path provenance through delivery. That architecture is
+not implemented yet.
 
 ## Scope
 
@@ -93,15 +98,20 @@ admission boundary. A limited session owns one immutable binding and keeps its
 compound lane private. `Try_Send` accepts complete endpoint references and
 message metadata, validates them before reserving a header, and constructs the
 relative V1 header internally. Enqueue into this first bounded ingress is the
-in-process acceptance point. Transport-facing `Try_Take_Accepted` returns both
+in-process acceptance point. The current transport-facing
+`Try_Take_Accepted` returns both
 leases with the exact binding copied by value and reconstructs the complete
 source and destination endpoints without accepting caller-supplied context.
 Close fences admission and synchronously drains queued entries.
 
-This immediate API deliberately stops before endpoint delivery. It has no
-deadline, cancellation, disconnect, or authoritative-node-death operation yet,
-and the existing payload-only node mailboxes are not used because they cannot
-retain the header and session binding.
+This immediate API is a transitional implementation seam and deliberately
+stops before endpoint delivery. Decision 0013 replaces direct public dequeue
+in the completed design with a context-owned delivery driver, exact path
+references, compound-node mailboxes, retained delivery outcomes, and
+payload-only application receipt. It has no deadline, cancellation,
+disconnect, or authoritative-node-death operation yet, and the existing
+payload-only node mailboxes are not used because they cannot retain the header
+and session binding.
 
 `Flyology.Remoting.Nodes.In_Process` adds fixed-capacity endpoint mailboxes over
 the lane. It rejects foreign, stale-incarnation, stale-generation, and closing
@@ -159,7 +169,8 @@ access. The compound builder and atomic in-process pair-transfer primitive are
 executable, and the exact-binding in-process session ingress now establishes
 the immediate bounded acceptance point. Deadline, cancellation,
 authoritative-death, and post-acceptance endpoint-delivery races remain before
-full session conformance.
+full session conformance. Decision 0013 accepts the required delivery and
+liveness composition but does not claim its implementation.
 
 Durable delivery, transparent retry, global ordering, exactly-once execution,
 peer discovery, and code deployment are not initial promises.

@@ -149,7 +149,7 @@ wrapper derives payload length from the owned lease and constructs the relative
 V1 header privately. Atomic compound enqueue is therefore the immediate
 decision-0010 acceptance point.
 
-Transport-facing dequeue publishes both leases and a by-value copy of the
+The current transport-facing dequeue publishes both leases and a by-value copy of the
 exact binding in one abort-deferred action. Complete endpoint references are
 reconstructed only from that retained binding plus the sealed header's slots
 and generations. Forwarding validates a new outbound binding and replaces only
@@ -159,10 +159,24 @@ and synchronously drains queued descriptors; it does not classify the peer or
 node as dead.
 
 This immediate ingress is not destination delivery or full session
-conformance. The existing endpoint-aware node is payload-only and cannot be
-the next hop without losing header and binding context. Deadlines,
-cancellation, authoritative-death fencing, and post-acceptance delivery
-outcomes remain separate reviewed layers.
+conformance. Decision 0013 accepts its replacement delivery architecture. One
+context owns session, path, and retained-outcome linearization. A bounded
+buffer domain owns heterogeneous pools and supplies owned movable capabilities
+to context-owned carriers without copying payload bytes. Complementary session
+views register exact paths into compound-node endpoints; a private delivery
+driver moves accepted header/payload carriers into exact path-stamped
+mailboxes. Application receive releases the contextual header before
+publishing a payload-only inbound message, so a session may retire without
+waiting for application payload ownership.
+
+Direct public accepted dequeue is therefore transitional and is removed by the
+completed design. Endpoint and path generations, operation claims, resumable
+out-of-lock cleanup, exclusive per-session header-pool reservation, and
+authoritative liveness fencing prevent stale delivery and double release.
+`Node_Incarnation_Ended` still requires decision 0012's exact owned-process
+authority; disconnection alone remains `Peer_Unreachable`. This accepted
+architecture is not implemented yet, and deadlines and cancellation remain
+later reviewed layers.
 
 The endpoint-aware reference node builds a fixed mailbox array over those
 lanes. A protected gate validates and pins exact endpoint generations around

@@ -18,8 +18,10 @@ directly over node payload leases without an intermediate array.
   codec are complete. The in-process compound lane now implements the bounded
   two-segment ownership primitive required by decisions 0009 and 0010. The
   exact-binding immediate session ingress and its high-level acceptance point
-  are complete; deadline, cancellation, and endpoint-delivery layers remain
-  pending.
+  are complete. Decision 0013 accepts the compound-aware endpoint-delivery
+  architecture, including context-owned paths and outcomes, heterogeneous
+  buffer-domain capabilities, compound-node mailboxes, and liveness fencing;
+  implementation, deadline, and cancellation layers remain pending.
 - Implement a bounded in-process transport.
 - Route opaque payloads through bounded endpoint mailboxes and close/drain
   exact generations before slot reuse. A reusable immediate local-node harness
@@ -37,8 +39,9 @@ directly over node payload leases without an intermediate array.
   and delivery conformance remain pending the full session SPI.
 - The transactional 144-byte arbitrary-bound header codec and fixed-capacity
   compound builder/header ownership and exact-binding immediate session SPI
-  are complete. Add compound-aware endpoint delivery and the remaining session
-  races before qualifying IPC or network adapters.
+  are complete. Implement accepted Decision 0013 in separately reviewed
+  buffer-domain, context/provider, and endpoint-delivery slices, then close the
+  remaining session races before qualifying IPC or network adapters.
 - Keep the first API one-way; add request/reply only after message correlation
   can reuse the same ownership rules.
 
