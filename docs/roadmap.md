@@ -17,7 +17,8 @@ directly over node payload leases without an intermediate array.
   allocation-free directional session binding, and exact version-one header
   codec are complete. The in-process compound lane now implements the bounded
   two-segment ownership primitive required by decisions 0009 and 0010. The
-  exact-binding session adapter and its high-level acceptance point remain
+  exact-binding immediate session ingress and its high-level acceptance point
+  are complete; deadline, cancellation, and endpoint-delivery layers remain
   pending.
 - Implement a bounded in-process transport.
 - Route opaque payloads through bounded endpoint mailboxes and close/drain
@@ -33,11 +34,11 @@ directly over node payload leases without an intermediate array.
   The reusable payload-lane subset now covers FIFO order, bounded
   backpressure, ownership restoration, forwarding, empty payloads,
   close/drain, and exact release. Session deadline, cancellation, disconnect,
-  and acceptance-commit cases remain pending the session SPI.
+  and delivery conformance remain pending the full session SPI.
 - The transactional 144-byte arbitrary-bound header codec and fixed-capacity
-  compound builder/header ownership are complete. Implement the high-level
-  exact-binding in-process session SPI before qualifying IPC or network
-  adapters.
+  compound builder/header ownership and exact-binding immediate session SPI
+  are complete. Add compound-aware endpoint delivery and the remaining session
+  races before qualifying IPC or network adapters.
 - Keep the first API one-way; add request/reply only after message correlation
   can reuse the same ownership rules.
 

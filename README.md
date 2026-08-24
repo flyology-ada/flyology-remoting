@@ -23,8 +23,10 @@ the binding does not perform encoding. The accepted version-one envelope
 derives complete node references from this exact role-bound session and carries
 only the endpoints' slots and generations instead of those complete node
 references. The fixed header value and codec are implemented; compound lease
-ownership is implemented by the bounded in-process reference transport, while
-the high-level session transport is not implemented yet.
+ownership is implemented by the bounded in-process reference transport. The
+immediate in-process session ingress now validates complete outbound routes,
+retains the exact binding at bounded acceptance, and reconstructs complete
+endpoint references for transport drivers. Endpoint delivery remains pending.
 
 ## Scope
 
@@ -84,7 +86,22 @@ additional leases too; a shared or unavailable pool reports explicit local
 resource exhaustion. Lane finalization closes and pair-drains accepted entries
 without relying on the payload channel to retire headers separately. This
 remains a transport primitive: the exact session binding and reconstructed
-node references belong to the pending high-level session adapter.
+node references belong to the high-level session adapter.
+
+`Flyology.Remoting.Sessions.In_Process` is the one-direction sender-side
+admission boundary. A limited session owns one immutable binding and keeps its
+compound lane private. `Try_Send` accepts complete endpoint references and
+message metadata, validates them before reserving a header, and constructs the
+relative V1 header internally. Enqueue into this first bounded ingress is the
+in-process acceptance point. Transport-facing `Try_Take_Accepted` returns both
+leases with the exact binding copied by value and reconstructs the complete
+source and destination endpoints without accepting caller-supplied context.
+Close fences admission and synchronously drains queued entries.
+
+This immediate API deliberately stops before endpoint delivery. It has no
+deadline, cancellation, disconnect, or authoritative-node-death operation yet,
+and the existing payload-only node mailboxes are not used because they cannot
+retain the header and session binding.
 
 `Flyology.Remoting.Nodes.In_Process` adds fixed-capacity endpoint mailboxes over
 the lane. It rejects foreign, stale-incarnation, stale-generation, and closing
@@ -139,9 +156,10 @@ bytes rather than Ada object representation. Header storage and precommit
 builders are fixed-capacity; the payload remains an opaque lease and can be
 forwarded under a newly validated header without copying or gaining writable
 access. The compound builder and atomic in-process pair-transfer primitive are
-now executable. The exact-binding session ingress that defines send acceptance
-is the next implementation slice, so this reference lane is not yet a full
-session API or the decision-0010 acceptance point.
+executable, and the exact-binding in-process session ingress now establishes
+the immediate bounded acceptance point. Deadline, cancellation,
+authoritative-death, and post-acceptance endpoint-delivery races remain before
+full session conformance.
 
 Durable delivery, transparent retry, global ordering, exactly-once execution,
 peer discovery, and code deployment are not initial promises.
@@ -191,8 +209,9 @@ alr build
 ./scripts/test.sh
 ```
 
-The test harness builds the crate and exercises reference-lane and
-compound-header/payload ownership, sealed-builder exhaustion and abandonment,
+The test harness builds the crate and exercises reference-lane,
+compound-header/payload ownership, exact-binding typed session admission,
+sealed-builder exhaustion and abandonment,
 zero-copy forwarding, endpoint-node ownership, backpressure, FIFO order,
 concurrent lightweight task handoff and close, closure, and undelivered-payload cleanup. They also
 exercise invalid identity sentinels, restart and reconnect freshness, bounded

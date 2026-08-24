@@ -37,3 +37,6 @@
 - Add a bounded in-process compound lane with reusable limited sealed builders,
   atomic header/payload queue publication, immutable two-lease receipt, zero-copy
   re-enveloping, explicit builder/header exhaustion, and abort-safe pair cleanup.
+- Add exact-binding in-process session ingress with complete-route validation,
+  private header construction, bounded acceptance, binding-retaining transport
+  dequeue, cross-role forwarding, synchronous drain, and a typed Wire round trip.
