@@ -112,6 +112,35 @@ the receiver gets callback-scoped read access. Nonblocking send and receive
 make ownership-preserving backpressure, closure, FIFO order, and drainage
 directly testable without a codec dependency.
 
+The compound in-process lane implements the two-segment ownership mechanism
+required by decisions 0009 and 0010 with separate caller-owned payload and
+canonical-header pools. It remains binding-agnostic and therefore is not yet
+decision 0010's high-level session acceptance queue. A limited builder holds a
+noncopyable reservation and one sealed 144-byte header lease. Every access to
+the private payload channel occurs under one outer protected gate, which moves
+the header into a fixed registry slot and the payload into the channel within
+one abort-deferred action. Private channel metadata associates the queued
+payload with that occupied header slot and never escapes, so the slot needs no
+generation. Receive atomically moves both leases into one limited immutable
+message before reusing the slot.
+
+Every rejected commit releases its sealed header and retains the payload; the
+limited builder object may then be prepared again. Accepted forwarding moves
+the original payload without copying, publishes a newly sealed contextual
+header, and releases the old header within
+the same protected action. Close fences new builders; callers may drain
+accepted pairs, and lane finalization performs a nonraising pair drain. Header
+pool capacity must cover at least the queue plus active builders. Additional
+leases retained by receivers can cause shared-pool contention, which remains an
+explicit local resource outcome rather than hidden allocation.
+
+The compound lane currently uses the narrow `Flyology.Buffers.Drivers`
+detached-token SPI because each lane selects its header pool at run time while
+the fixed registry requires a definite stored type. This is a reviewed
+provider coupling, not an application API. It must be promoted to a stable
+Flyology buffer capability or replaced before a compatibility release of
+remoting.
+
 The endpoint-aware reference node builds a fixed mailbox array over those
 lanes. A protected gate validates and pins exact endpoint generations around
 each nonblocking queue operation. Closing prevents new pins, waits for existing
@@ -120,8 +149,8 @@ before its slot can be reused. Endpoint and mailbox capacity are explicit
 generic parameters. A limited controlled endpoint handle owns each claim and
 closes it during finalization, including owner abort and exceptional exit.
 
-The lane's immediate accepted, backpressure, empty, and closed results describe
-only the local bounded queue. IPC and network sessions wrap that primitive and
+The lanes' immediate accepted, backpressure, local-resource, empty, and closed
+results describe only the local bounded queue. IPC and network sessions wrap that primitive and
 retain the common contract's distinct disconnection, deadline, compatibility,
 authorization, and resource failures.
 

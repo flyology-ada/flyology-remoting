@@ -13,6 +13,7 @@ project Flyology_Remoting_Tests is
       "codec_payload_lease_smoke.adb",
       "codec_transport_smoke.adb",
       "in_process_transport_smoke.adb",
+      "in_process_compound_transport_smoke.adb",
       "in_process_node_smoke.adb",
       "task_lifecycle_smoke.adb");
 

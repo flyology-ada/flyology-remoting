@@ -4,14 +4,29 @@ with "config/flyology_remoting_config.gpr";
 
 project Flyology_Remoting is
 
+   type Compound_Test_Hooks_Type is ("false", "true");
+   Compound_Test_Hooks : Compound_Test_Hooks_Type :=
+     external ("FLYOLOGY_REMOTING_COMPOUND_TEST_HOOKS", "false");
+   Compound_Test_Hook_Source_Dir :=
+     "src/test_hooks/compound/disabled/";
+   Hook_Output_Suffix := "";
+   case Compound_Test_Hooks is
+      when "false" =>
+         null;
+      when "true" =>
+         Compound_Test_Hook_Source_Dir :=
+           "src/test_hooks/compound/enabled/";
+         Hook_Output_Suffix := "/test-hooks";
+   end case;
+
    for Languages use ("Ada");
    for Library_Name use "Flyology_Remoting";
    for Library_Version use
      Project'Library_Name & ".so." & Flyology_Remoting_Config.Crate_Version;
-   for Source_Dirs use ("src/", "config/");
-   for Object_Dir use "obj/" & Flyology_Remoting_Config.Build_Profile;
+   for Source_Dirs use ("src/", "config/", Compound_Test_Hook_Source_Dir);
+   for Object_Dir use "obj/" & Flyology_Remoting_Config.Build_Profile & Hook_Output_Suffix;
    for Create_Missing_Dirs use "True";
-   for Library_Dir use "lib";
+   for Library_Dir use "lib" & Hook_Output_Suffix;
 
    type Library_Type_Type is ("relocatable", "static", "static-pic");
    Library_Type : Library_Type_Type :=

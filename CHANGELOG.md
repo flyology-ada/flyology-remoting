@@ -34,3 +34,6 @@
 - Add public message identity values and the allocation-free version-one
   144-byte header codec with canonical Wire schema encoding, arbitrary-bound
   storage, transactional status failures, and corruption fixtures.
+- Add a bounded in-process compound lane with reusable limited sealed builders,
+  atomic header/payload queue publication, immutable two-lease receipt, zero-copy
+  re-enveloping, explicit builder/header exhaustion, and abort-safe pair cleanup.

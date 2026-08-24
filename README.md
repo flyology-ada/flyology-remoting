@@ -23,7 +23,8 @@ the binding does not perform encoding. The accepted version-one envelope
 derives complete node references from this exact role-bound session and carries
 only the endpoints' slots and generations instead of those complete node
 references. The fixed header value and codec are implemented; compound lease
-ownership and the high-level session transport are not implemented yet.
+ownership is implemented by the bounded in-process reference transport, while
+the high-level session transport is not implemented yet.
 
 ## Scope
 
@@ -64,6 +65,26 @@ the current lane has no handshake, deadline, cancellation, or disconnect API.
 This is the executable semantic reference for later IPC and network adapters,
 not a separate application messaging API. It deliberately carries opaque bytes
 and defines no type IDs, schema values, framing, endpoints, or codec contract.
+
+`Flyology.Remoting.Transports.In_Process_Compound` adds the bounded
+two-segment ownership primitive. One caller-configured pool supplies payload
+leases, a second supplies canonical 144-byte header leases, and explicit
+generic parameters bound the queue and concurrently prepared builders. A
+limited builder reserves and seals one header before commit. The outer
+protected gate atomically publishes that header lease with the unchanged
+payload lease, so abort cannot split ownership across the two segments.
+Backpressure and closure consume the prepared header and preserve the payload;
+the limited builder object can then be prepared again for another attempt.
+Received messages own both immutable leases, and forwarding installs a new
+canonical header while retaining the same payload lease and storage slot.
+
+The minimum dedicated header-pool capacity is queue capacity plus concurrent
+builder capacity. Applications retaining received messages must budget those
+additional leases too; a shared or unavailable pool reports explicit local
+resource exhaustion. Lane finalization closes and pair-drains accepted entries
+without relying on the payload channel to retire headers separately. This
+remains a transport primitive: the exact session binding and reconstructed
+node references belong to the pending high-level session adapter.
 
 `Flyology.Remoting.Nodes.In_Process` adds fixed-capacity endpoint mailboxes over
 the lane. It rejects foreign, stale-incarnation, stale-generation, and closing
@@ -115,11 +136,12 @@ by the session-establishment protocol. The implemented allocation-free value
 codec reports transactional status failures, supports arbitrary array bounds,
 and encodes and decodes the writer schema identity through Wire's canonical
 bytes rather than Ada object representation. Header storage and precommit
-builders will be fixed-capacity; the payload remains an opaque lease and can be
+builders are fixed-capacity; the payload remains an opaque lease and can be
 forwarded under a newly validated header without copying or gaining writable
-access. The compound builder and session contracts are the next implementation
-slice, not a claim that the current reference lane already provides a full
-session API.
+access. The compound builder and atomic in-process pair-transfer primitive are
+now executable. The exact-binding session ingress that defines send acceptance
+is the next implementation slice, so this reference lane is not yet a full
+session API or the decision-0010 acceptance point.
 
 Durable delivery, transparent retry, global ordering, exactly-once execution,
 peer discovery, and code deployment are not initial promises.
@@ -169,9 +191,10 @@ alr build
 ./scripts/test.sh
 ```
 
-The test harness builds the crate and exercises reference-lane
-and endpoint-node ownership, backpressure, FIFO order, concurrent lightweight
-task handoff and close, closure, and undelivered-payload cleanup. They also
+The test harness builds the crate and exercises reference-lane and
+compound-header/payload ownership, sealed-builder exhaustion and abandonment,
+zero-copy forwarding, endpoint-node ownership, backpressure, FIFO order,
+concurrent lightweight task handoff and close, closure, and undelivered-payload cleanup. They also
 exercise invalid identity sentinels, restart and reconnect freshness, bounded
 endpoint allocation, stale reference rejection, slot reuse, concurrent claims,
 portable exact-generation lifecycle conversion, and a canonical Profile 1
